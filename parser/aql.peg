@@ -1,0 +1,197 @@
+{
+package parser
+
+import (
+    "fmt"
+    "log"
+    "strconv"
+    "strings"
+    "os"
+)
+
+type NodeType int
+
+const (
+    _ NodeType = iota
+    NodeAnd
+    NodeOr
+    NodeTerminal
+)
+
+type Node struct {
+    NodeType NodeType
+    Comparison Comparison
+    Left *Node
+    Right *Node
+}
+
+type Comparison struct {
+    Op string
+    Negated bool
+    Field string
+    Values []string
+}
+
+// ParseQuery parses the AQL query string and returns the query root node
+func ParseQuery(query string) (*Node, error) {
+    v, err :=  Parse("", []byte(query))
+    if err  != nil {
+        return  nil, fmt.Errorf("parser error: %w", err)
+    }
+    return getRootNode(v)
+}
+
+// ParseQueryReader parses the AQL query from an io.Reader and returns the query
+// root node
+func ParseQueryReader(queryReader io.Reader) (*Node, error) {
+    v, err :=  ParseReader("", queryReader)
+    if err  != nil {
+        return  nil, fmt.Errorf("parser error: %w", err)
+    }
+    return getRootNode(v)
+}
+
+func getRootNode(v interface{})(*Node, error) {
+    switch t := v.(type){
+    case nil:
+        return nil, fmt.Errorf("Parser returned nil output")
+    case interface{}:
+        ta, ok := t.([]interface{})
+        if !ok {
+            return nil, fmt.Errorf("Parser did not return []interface{}, got: %#v", t)
+        }
+        rootNode, ok := ta[0].(*Node)
+        if !ok {
+            return nil, fmt.Errorf("Did not find root node where expected, found: %#v", ta[0])
+        }
+        return rootNode, nil
+    default:
+        return nil, fmt.Errorf("Parser returned unknown type: %T", t)
+    }
+}
+
+// unused, may be useful for other matches
+func toString(label interface{}) (string, error) {
+    var sb strings.Builder
+    value := label.([]interface{})
+    for _, i := range(value) {
+        if i == nil {
+            continue
+        }
+        switch b := i.(type) {
+        case []byte:
+            sb.WriteByte(b[0])
+        case string:
+            sb.WriteString(b)
+        case []interface{}:
+            s, err := toString(i)
+			if err != nil {
+				return "", err
+			}
+            sb.WriteString(s)
+        default:
+            return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v\n", i, i)
+        }
+    }
+    return sb.String(), nil
+}
+}
+
+Start <- Query EOF
+
+Query <- OrClause
+
+//TODO: Negatable
+OrClause <- lhs:AndClause _ opOR _ rhs:OrClause {
+    return &Node {
+        NodeType: NodeOr,
+        Left: lhs.(*Node),
+        Right: rhs.(*Node),
+    }, nil
+} / AndClause
+
+AndClause <- lhs:Comparison _ opAND _ rhs:AndClause {
+    return &Node {
+        NodeType: NodeAnd,
+        Left: lhs.(*Node),
+        Right: rhs.(*Node),
+    }, nil
+} / Comparison
+
+//TODO: Negatable
+Comparison <- '(' _ query:Query _ ')'{
+    return query, nil
+} /  field:Field _ operation:opCOMP _ value:Value {
+    return &Node{
+        NodeType: NodeTerminal,
+        Comparison:Comparison{
+            Op: string(operation.([]byte)),
+            Negated: false,  //TODO
+            Field: field.(string),
+            Values: []string{value.(string)}, //TODO MULTIPLES
+        },
+    }, nil
+}
+
+Field <- first:FieldPiece rest:('.' FieldPiece)* {
+    return string(c.text), nil
+}
+
+FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece
+
+UnquotedFieldPiece <- [a-zA-Z][a-zA-Z0-9]*
+
+QuotedFieldPiece <- QuotedValue
+
+Value <- QuotedValue {
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    return strconv.Unquote(string(c.text))
+} / BareValue {
+    return string(c.text), nil
+}
+
+QuotedValue ← '"' ( !EscapedChar . / '\\' EscapeSequence )* '"'
+
+EscapedChar ← [\x00-\x1f"\\]
+
+EscapeSequence ← SingleCharEscape / UnicodeEscape
+
+SingleCharEscape ← ["\\/bfnrt]
+
+UnicodeEscape ← 'u' HexDigit HexDigit HexDigit HexDigit
+
+HexDigit ← [0-9a-f]i
+
+ValueChars <- [a-zA-Z0-9 !]
+
+//more here, longest rule first
+//TODO: maybe constrain non-numeric barevalues to special ops?
+BareValue  <- CIDRValue
+            / NumericValue
+
+NumericValue <- Float / Integer
+
+Float <- [0-9]+ '.' [0-9]+
+
+Integer <- [0-9]+
+
+CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9][0-9] {
+    // we don't want to do anything heavy in the parser, just assert that
+    // barewords more or less conform. Actual parsing will be done when building
+    // the optree
+    return string(c.text), nil
+}
+
+Octet <- [0-9][0-9]?[0-9]?
+
+opOR <- "OR"
+
+opAND <- "AND"
+
+opCOMP <- [<>=] '='?
+          / "!="
+          / ":"
+
+_ "whitespace" <- [ \n\t\r]*
+
+EOF = !.
