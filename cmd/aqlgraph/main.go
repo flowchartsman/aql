@@ -25,7 +25,7 @@ func main() {
 
 const premable = `digraph G {
 	labelloc=top;
-	node [style="filled"];
+	node [style="filled" fontname = "Helvetica"];
 	label=%q;
 	root[shape="point"]
 	root->0
@@ -65,11 +65,11 @@ func graphNode(w io.StringWriter, node *parser.Node, id *int) {
 		sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1">field</TD><TD BORDER="1">%s</TD></TR>`, node.Comparison.Field))
 		sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1">op</TD><TD BORDER="1">%s</TD></TR>`, node.Comparison.Op))
 		if len(node.Comparison.Values) == 1 {
-			sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1">value</TD><TD BORDER="1">%s</TD></TR>`, node.Comparison.Values[0]))
+			sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1">value</TD><TD BORDER="1"><FONT FACE="monospace">%s</FONT></TD></TR>`, node.Comparison.Values[0]))
 		} else {
 			sb.WriteString(`<TR><TD BORDER="1">values</TD><TD CELLPADDING="0" BORDER="0"><TABLE BORDER="0" CELLPADDING="2" CELLSPACING="0">`)
 			for _, val := range node.Comparison.Values {
-				sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1">%s</TD></TR>`, val))
+				sb.WriteString(fmt.Sprintf(`<TR><TD BORDER="1"><FONT FACE="monospace">%s</FONT></TD></TR>`, val))
 			}
 			sb.WriteString(`</TABLE></TD></TR>`)
 		}
