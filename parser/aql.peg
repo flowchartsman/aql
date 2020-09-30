@@ -95,6 +95,22 @@ func toString(label interface{}) (string, error) {
     }
     return sb.String(), nil
 }
+func toIfaceSlice(v interface{}) []interface{} {
+    if v == nil {
+        return nil
+    }
+    return v.([]interface{})
+}
+
+func getValues(first, rest interface{}) []string {
+    out := []string{first.(string)}
+    restSl := toIfaceSlice(rest)
+    for _, v := range restSl {
+        valExpr := toIfaceSlice(v)
+        out = append(out, valExpr[3].(string))
+    }
+    return out
+}
 }
 
 Start <- Query EOF
@@ -121,14 +137,14 @@ AndClause <- lhs:Comparison _ opAND _ rhs:AndClause {
 //TODO: Negatable
 Comparison <- '(' _ query:Query _ ')'{
     return query, nil
-} /  field:Field _ operation:opCOMP _ value:Value {
+} /  field:Field _ operation:opCOMP _ values:ValueList {
     return &Node{
         NodeType: NodeTerminal,
         Comparison:Comparison{
             Op: string(operation.([]byte)),
             Negated: false,  //TODO
             Field: field.(string),
-            Values: []string{value.(string)}, //TODO MULTIPLES
+            Values: values.([]string),
         },
     }, nil
 }
@@ -142,6 +158,12 @@ FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece
 UnquotedFieldPiece <- [a-zA-Z][a-zA-Z0-9]*
 
 QuotedFieldPiece <- QuotedValue
+
+ValueList <- '[' _ first:Value rest:( _ ',' _ Value )* _ ']' {
+    return getValues(first, rest), nil
+} / value:Value {
+    return []string{value.(string)}, nil
+}
 
 Value <- QuotedValue {
     c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)

@@ -1,2 +1,6 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/mna/pigeon v1.0.1-0.20200224192238-18953b277063 h1:V7s6vhIrNeOqocziAmRoVJh6gnPPx83ovlpT7Hf5shI=
+github.com/mna/pigeon v1.0.1-0.20200224192238-18953b277063/go.mod h1:rkFeDZ0gc+YbnrXPw0q2RlI0QRuKBBPu67fgYIyGRNg=
+golang.org/x/tools v0.0.0-20190830223141-573d9926052a h1:XAHT1kdPpnU8Hk+FPi42KZFhtNFEk4vBg1U4OmIeHTU=
+golang.org/x/tools v0.0.0-20190830223141-573d9926052a/go.mod h1:b+2E5dAYhXwXZwtnZ6UAqBI28+e2cm9otk0dWdXHAEo=
