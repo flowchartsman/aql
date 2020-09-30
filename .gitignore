@@ -1,0 +1,10 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+.vscode
+cmd/aqlgraph/aqlgraph
+cmd/aqltest/aqltest
