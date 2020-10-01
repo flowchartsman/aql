@@ -10,7 +10,7 @@ var graphTmpl = template.Must(template.New("").Parse(
 	nodesep=0.5;
 	margin=1;
 	node [style="filled" fontname = "Helvetica"];
-	label="{{ .Title | js }}";
+	label="{{ .Title | html}}";
 	root[shape="point"]
 	{{- range .Nodes }}
 		{{- if .Props }}

@@ -137,11 +137,17 @@ AndClause <- lhs:Comparison _ opAND _ rhs:AndClause {
 //TODO: Negatable
 Comparison <- '(' _ query:Query _ ')'{
     return query, nil
-} /  field:Field _ operation:opCOMP _ values:ValueList {
+} /  field:Field ':' operation:opCOMP? _ values:ValueList {
+    var opOut string
+    if operation == nil {
+        opOut = "=="
+    } else {
+        opOut = operation.(string)
+    }
     return &Node{
         NodeType: NodeTerminal,
         Comparison:Comparison{
-            Op: string(operation.([]byte)),
+            Op: opOut,
             Negated: false,  //TODO
             Field: field.([]string),
             Values: values.([]string),
@@ -163,6 +169,7 @@ QuotedFieldPiece <- QuotedValue {
     return string(c.text), nil
 }
 
+//ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
 ValueList <- '[' _ first:Value rest:( _ ',' _ Value )* _ ']' {
     return getTokens(first, rest, 3), nil
 } / value:Value {
@@ -214,9 +221,16 @@ opOR <- "OR"
 
 opAND <- "AND"
 
-opCOMP <- [<>=] '='?
-          / "!="
-          / ":"
+opCOMP <- opCustom
+/ [<>] '=' {
+    return string(c.text), nil
+} / '!'{
+    return string(c.text), nil
+}
+
+opCustom <- '=' opname:[a-z]i+ '='{
+    return toString(opname)
+}
 
 _ "whitespace" <- [ \n\t\r]*
 
