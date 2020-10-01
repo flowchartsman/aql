@@ -4,6 +4,7 @@ import "text/template"
 
 var graphTmpl = template.Must(template.New("").Parse(
 	`digraph G {
+	fontname="monospace";
 	labelloc=top;
 	center=true;
 	nodesep=0.5;
