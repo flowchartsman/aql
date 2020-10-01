@@ -28,7 +28,7 @@ type Node struct {
 type Comparison struct {
     Op string
     Negated bool
-    Field string
+    Field []string
     Values []string
 }
 
@@ -102,12 +102,12 @@ func toIfaceSlice(v interface{}) []interface{} {
     return v.([]interface{})
 }
 
-func getValues(first, rest interface{}) []string {
+func getTokens(first, rest interface{}, idx int) []string {
     out := []string{first.(string)}
     restSl := toIfaceSlice(rest)
     for _, v := range restSl {
-        valExpr := toIfaceSlice(v)
-        out = append(out, valExpr[3].(string))
+        expr := toIfaceSlice(v)
+        out = append(out, expr[idx].(string))
     }
     return out
 }
@@ -143,24 +143,28 @@ Comparison <- '(' _ query:Query _ ')'{
         Comparison:Comparison{
             Op: string(operation.([]byte)),
             Negated: false,  //TODO
-            Field: field.(string),
+            Field: field.([]string),
             Values: values.([]string),
         },
     }, nil
 }
 
 Field <- first:FieldPiece rest:('.' FieldPiece)* {
-    return string(c.text), nil
+    return getTokens(first, rest, 1), nil
 }
 
 FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece
 
-UnquotedFieldPiece <- [a-zA-Z][a-zA-Z0-9]*
+UnquotedFieldPiece <- [a-zA-Z][a-zA-Z0-9]* {
+    return string(c.text), nil
+}
 
-QuotedFieldPiece <- QuotedValue
+QuotedFieldPiece <- QuotedValue {
+    return string(c.text), nil
+}
 
 ValueList <- '[' _ first:Value rest:( _ ',' _ Value )* _ ']' {
-    return getValues(first, rest), nil
+    return getTokens(first, rest, 3), nil
 } / value:Value {
     return []string{value.(string)}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/flowchartsman/aql/parser"
 )
@@ -85,7 +86,7 @@ func graphNodes(g *graph, node *parser.Node, id *int) {
 	case parser.NodeTerminal:
 		current.Shape = "plain"
 		current.Color = colorTerm
-		current.Field = node.Comparison.Field
+		current.Field = strings.Join(node.Comparison.Field, `.`)
 		current.addProp("op", node.Comparison.Op)
 		//current.addProp("negative", fmt.Sprintf(`%v`, node.Comparison.Negated))
 		current.addProp("values", node.Comparison.Values...)
