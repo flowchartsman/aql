@@ -5,22 +5,28 @@ import (
 	"log"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/flowchartsman/aql/parser"
+	"github.com/flowchartsman/aql/jsonquery"
 )
 
 func main() {
 	log.SetFlags(0)
-	if len(os.Args) != 2 {
-		log.Fatal("Usage: aql 'EXPR'")
+	if len(os.Args) != 3 {
+		log.Fatal("Usage: aql 'EXPR' <json file>")
 	}
-	log.Printf("received string: [%s]\n", os.Args[1])
-	// got, err := ParseReader("", strings.NewReader(os.Args[1]), Debug(false))
-	got, err := parser.ParseQuery(os.Args[1])
+
+	q, err := jsonquery.NewQuerier(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	// dumpNode(got.(*Node), 0)
-	spew.Dump(got)
-	fmt.Printf("%#v\n", got)
+
+	file, err := os.Open(os.Args[2])
+	if err != nil {
+		log.Fatalf("could not open file: %v", err)
+	}
+
+	result, err := q.Match(file)
+	if err != nil {
+		log.Fatalf("error running query: %v", err)
+	}
+	fmt.Println(result)
 }

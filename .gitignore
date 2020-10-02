@@ -8,3 +8,4 @@
 .vscode
 cmd/aqlgraph/aqlgraph
 cmd/aqltest/aqltest
+cmd/aqltest/*.json

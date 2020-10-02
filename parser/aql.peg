@@ -36,7 +36,7 @@ type Comparison struct {
 func ParseQuery(query string) (*Node, error) {
     v, err :=  Parse("", []byte(query))
     if err  != nil {
-        return  nil, fmt.Errorf("parser error: %w", err)
+        return  nil, err
     }
     return getRootNode(v)
 }
@@ -155,19 +155,23 @@ Comparison <- '(' _ query:Query _ ')'{
     }, nil
 }
 
-//TODO add array specifier?
+//TODO add array specifier? like foo.bar[*].baz[1]
 Field <- first:FieldPiece rest:('.' FieldPiece)* {
     return getTokens(first, rest, 1), nil
 }
 
-FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece
+FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star
 
-UnquotedFieldPiece <- [a-zA-Z][a-zA-Z0-9]* {
+UnquotedFieldPiece <- [a-z]i[a-z0-9_]* {
     return string(c.text), nil
 }
 
 QuotedFieldPiece <- QuotedValue {
     return string(c.text), nil
+}
+
+Star <- '*' {
+    return "*", nil
 }
 
 //ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
@@ -201,8 +205,13 @@ ValueChars <- [a-zA-Z0-9 !]
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
 //TODO: REGEXP Type?
+//TODO!!: These should each have their own type that's determined during parsing and then each type tan say whether or not it can do an operation maybe
+//TODO: value specifiers like "reltime:(-2 days)"
 BareValue  <- CIDRValue
             / NumericValue
+            / BoolValue
+
+BoolValue <- "false" /"true"
 
 NumericValue <- Float / Integer
 
@@ -213,7 +222,7 @@ Integer <- [0-9]+
 CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9][0-9] {
     // we don't want to do anything heavy in the parser, just assert that
     // barewords more or less conform. Actual parsing will be done when building
-    // the optree
+    // the query. This can be moved into the parser later
     return string(c.text), nil
 }
 
@@ -224,11 +233,11 @@ opOR <- "OR"
 opAND <- "AND"
 
 opCOMP <- opCustom
-/ [<>] '=' { 
-    return string(c.text), nil
-} / "><" {
+/ "><" {
     return string(c.text), nil
 } / [!~] {
+    return string(c.text), nil
+} / [<>] '='? { 
     return string(c.text), nil
 }
 
