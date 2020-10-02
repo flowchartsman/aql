@@ -26,7 +26,7 @@ var graphTmpl = template.Must(template.New("").Parse(
 			<TABLE BORDER="0" CELLPADDING="2" CELLSPACING="0">
 {{- range .Values}}
 				<TR>
-					<TD BORDER="1"><FONT FACE="monospace">{{ . }}</FONT></TD>
+					<TD BORDER="1"><FONT FACE="monospace">{{ . |html }}</FONT></TD>
 				</TR>
 {{- end }}
 			</TABLE>

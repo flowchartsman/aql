@@ -155,6 +155,7 @@ Comparison <- '(' _ query:Query _ ')'{
     }, nil
 }
 
+//TODO add array specifier?
 Field <- first:FieldPiece rest:('.' FieldPiece)* {
     return getTokens(first, rest, 1), nil
 }
@@ -199,6 +200,7 @@ ValueChars <- [a-zA-Z0-9 !]
 
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
+//TODO: REGEXP Type?
 BareValue  <- CIDRValue
             / NumericValue
 
@@ -222,9 +224,11 @@ opOR <- "OR"
 opAND <- "AND"
 
 opCOMP <- opCustom
-/ [<>] '=' {
+/ [<>] '=' { 
     return string(c.text), nil
-} / '!'{
+} / "><" {
+    return string(c.text), nil
+} / [!~] {
     return string(c.text), nil
 }
 
