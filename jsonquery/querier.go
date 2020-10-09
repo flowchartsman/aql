@@ -92,7 +92,7 @@ func getLvals(path []string, container *gabs.Container) ([]string, error) {
 	flat, err := target.Flatten()
 	switch err {
 	case gabs.ErrNotObjOrArray:
-		return []string{target.Data().(string)}, nil
+		flat = map[string]interface{}{"": target.Data()}
 	case nil:
 		// proceed
 	default:
