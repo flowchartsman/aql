@@ -20,13 +20,13 @@ func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error)
 		return nil, fmt.Errorf("cannot use empty identifier for equality comparison")
 	}
 	// this here is why we need type annotations in the parser
-	if _, err := strconv.ParseFloat(rValues[0], 64); err != nil {
+	if _, err := strconv.ParseFloat(rValues[0], 64); err == nil {
 		return opnumEQ.GetComparator(rValues)
 	}
-	if _, err := dateparse.ParseAny(rValues[0]); err != nil {
+	if _, err := dateparse.ParseAny(rValues[0]); err == nil {
 		return opnumEQ.GetComparator(rValues)
 	}
-	if b, err := strconv.ParseBool(rValues[0]); err != nil {
+	if b, err := strconv.ParseBool(rValues[0]); err == nil {
 		return &boolEQComparator{b}, nil
 	}
 	return &stringEQComparator{rValues[0]}, nil
