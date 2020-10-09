@@ -113,12 +113,22 @@ func getTokens(first, rest interface{}, idx int) []string {
 }
 }
 
+/******
+*******
+GRAMMAR
+*******
+*******/
+
 Start <- Query EOF
 
 Query <- OrClause
 
+/****
+NODES
+*****/
+
 //TODO: Negatable
-OrClause <- lhs:AndClause _ opOR _ rhs:OrClause {
+OrClause <- lhs:AndClause _ logicalOR _ rhs:OrClause {
     return &Node {
         NodeType: NodeOr,
         Left: lhs.(*Node),
@@ -126,7 +136,7 @@ OrClause <- lhs:AndClause _ opOR _ rhs:OrClause {
     }, nil
 } / AndClause
 
-AndClause <- lhs:Comparison _ opAND _ rhs:AndClause {
+AndClause <- lhs:Comparison _ logicalAND _ rhs:AndClause {
     return &Node {
         NodeType: NodeAnd,
         Left: lhs.(*Node),
@@ -155,6 +165,10 @@ Comparison <- '(' _ query:Query _ ')'{
     }, nil
 }
 
+/*****
+FIELDS
+******/
+
 //TODO add array specifier? like foo.bar[*].baz[1]
 Field <- first:FieldPiece rest:('.' FieldPiece)* {
     return getTokens(first, rest, 1), nil
@@ -173,6 +187,10 @@ QuotedFieldPiece <- QuotedValue {
 Star <- '*' {
     return "*", nil
 }
+
+/*****
+VALUES
+******/
 
 //ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
 ValueList <- '[' _ first:Value rest:( _ ',' _ Value )* _ ']' {
@@ -202,6 +220,10 @@ HexDigit ← [0-9a-f]i
 
 ValueChars <- [a-zA-Z0-9 !]
 
+/*******************
+SPECIFIC VALUE TYPES
+********************/
+
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
 //TODO: REGEXP Type?
@@ -228,9 +250,17 @@ CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9][0-9] {
 
 Octet <- [0-9][0-9]?[0-9]?
 
-opOR <- "OR"
+/****************
+LOGICAL OPERATORS
+*****************/
 
-opAND <- "AND"
+logicalOR <- "OR"
+
+logicalAND <- "AND"
+
+/*******************
+COMPARISON OPERATORS
+********************/
 
 opCOMP <- opCustom
 / "><" {
@@ -245,6 +275,20 @@ opCustom <- '=' opname:[a-z]i+ '='{
     return toString(opname)
 }
 
+/**********************
+WHITESPACE AND TERMINAL
+***********************/
+
 _ "whitespace" <- [ \n\t\r]*
 
 EOF = !.
+
+/*****************************
+TERMINAL ERROR HANDLING STATES
+******************************/
+
+/*
+ErrOp <- #{
+    return fmt.Errorf("invalid operator")
+}
+*/
