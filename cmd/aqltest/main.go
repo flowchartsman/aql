@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/flowchartsman/aql/jsonquery"
+	"github.com/flowchartsman/aql/parser"
 )
 
 func main() {
