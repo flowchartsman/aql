@@ -1,3 +1,5 @@
+package parser
+
 // NodeType represents the type of a node in the parse tree
 type NodeType int
 
