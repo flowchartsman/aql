@@ -175,7 +175,7 @@ NODES
 *****/
 
 //TODO: Negatable
-OrClause <- lhs:AndClause _ logicalOR _ rhs:OrClause {
+OrClause <- lhs:AndClause space logicalOR space rhs:OrClause {
     return &Node {
         NodeType: NodeOr,
         Left: lhs.(*Node),
@@ -183,7 +183,7 @@ OrClause <- lhs:AndClause _ logicalOR _ rhs:OrClause {
     }, nil
 } / AndClause
 
-AndClause <- lhs:Comparison _ logicalAND _ rhs:AndClause {
+AndClause <- lhs:Comparison space logicalAND space rhs:AndClause {
     return &Node {
         NodeType: NodeAnd,
         Left: lhs.(*Node),
@@ -192,9 +192,9 @@ AndClause <- lhs:Comparison _ logicalAND _ rhs:AndClause {
 } / Comparison
 
 //TODO: Negatable
-Comparison <- '(' _ query:Query _ ')'{
+Comparison <- '(' space? query:Query space? ')'{
     return query, nil
-} /  field:Field ':' operation:opCOMP? _ values:ValueList {
+} /  field:Field ':' operation:opCOMP? space? values:ValueList {
     var opOut string
     if operation == nil {
         opOut = "=="
@@ -240,7 +240,7 @@ VALUES
 ******/
 
 //ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
-ValueList <- '[' _ first:Value rest:( _ ',' _ Value )* _ ']' {
+ValueList <- '[' space? first:Value rest:( space? ',' space? Value )* space? ']' {
     return getTokens(first, rest, 3), nil
 } / value:Value {
     return []string{value.(string)}, nil
@@ -276,7 +276,8 @@ SPECIFIC VALUE TYPES
 //TODO: REGEXP Type?
 //TODO!!: These should each have their own type that's determined during parsing and then each type tan say whether or not it can do an operation maybe
 //TODO: value specifiers like "reltime:(-2 days)"
-BareValue  <- CIDRValue
+BareValue  <- Timestamp
+            / CIDRValue
             / NumericValue
             / BoolValue
 
@@ -288,7 +289,7 @@ Float <- [0-9]+ '.' [0-9]+
 
 Integer <- [0-9]+
 
-CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9][0-9] {
+CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9]? {
     // we don't want to do anything heavy in the parser, just assert that
     // barewords more or less conform. Actual parsing will be done when building
     // the query. This can be moved into the parser later
@@ -296,6 +297,27 @@ CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9][0-9] {
 }
 
 Octet <- [0-9][0-9]?[0-9]?
+
+/*RFC3339*/
+Timestamp <- dateTime / fullDate
+
+/*TODO: DO FUNCS*/
+dateTime <- fullDate ("T"i / " ") fullTime
+fullDate <- dateFullyear '-' dateMonth '-' dateMday
+
+dateFullyear <- Digit4
+dateMonth <- Digit2
+dateMday <- Digit2
+timeHour <- Digit2
+timeMinute <- Digit2
+timeSecond <- Digit2
+timeSecfrac <- '.' [0-9]+
+timeNumoffset <- ('+' / '-') timeHour ':' timeMinute
+timeOffset <- "Z"i / timeNumoffset
+partialTime <- timeHour ':' timeMinute ':' timeSecond timeSecfrac?
+fullTime <- partialTime timeOffset
+Digit4 <- [0-9][0-9][0-9][0-9]
+Digit2 <- [0-9][0-9]
 
 /****************
 LOGICAL OPERATORS
@@ -326,7 +348,7 @@ opCustom <- '=' opname:[a-z]i+ '='{
 WHITESPACE AND TERMINAL
 ***********************/
 
-_ "whitespace" <- [ \n\t\r]*
+space <- [ \n\t\r]+
 
 EOF = !.
 
