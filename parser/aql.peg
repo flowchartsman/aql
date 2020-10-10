@@ -12,150 +12,151 @@ import (
 type NodeType int
 
 const (
-    _ NodeType = iota
-    NodeAnd
-    NodeOr
-    NodeTerminal
+	_ NodeType = iota
+	NodeAnd
+	NodeOr
+	NodeTerminal
 )
 
 type Node struct {
-    NodeType NodeType
-    Comparison Comparison
-    Left *Node
-    Right *Node
+	NodeType   NodeType
+	Comparison Comparison
+	Left       *Node
+	Right      *Node
 }
 
 type Comparison struct {
-    Op string
-    Negated bool
-    Field []string
-    Values []string
+	Op      string
+	Negated bool
+	Field   []string
+	Values  []string
 }
 
 type ParseError struct {
-    Inner error
-    Line int
-    Column int
-    Offset int
-    Prefix string
-    Expected []string
-}
-func (p *ParseError) Error() string {
-    return p.Prefix + ": " + p.Inner.Error()
+	Inner    error    `json:"inner"`
+	Line     int      `json:"line"`
+	Column   int      `json:"column"`
+	Offset   int      `json:"offset"`
+	Prefix   string   `json:"prefix"`
+	Expected []string `json:"expected"`
 }
 
-func getParseError(err error) error{
-    switch ev:= err.(type) {
-    case errList:
-        if pe, ok := ev[0].(*parserError); ok {
-            return &ParseError{
-                Inner:    pe.Inner,
-                Line:     pe.pos.line,
-                Column:   pe.pos.col,
-                Offset:   pe.pos.offset,
-                Prefix:   pe.prefix,
-                Expected: pe.expected, 
-            }
-        }
-    }
-    return err
+func (p *ParseError) Error() string {
+	return p.Prefix + ": " + p.Inner.Error()
+}
+
+func getParseError(err error) error {
+	switch ev := err.(type) {
+	case errList:
+		if pe, ok := ev[0].(*parserError); ok {
+			return &ParseError{
+				Inner:    pe.Inner,
+				Line:     pe.pos.line,
+				Column:   pe.pos.col,
+				Offset:   pe.pos.offset,
+				Prefix:   pe.prefix,
+				Expected: pe.expected,
+			}
+		}
+	}
+	return err
 }
 
 // ParseQuery parses the AQL query string and returns the query root node
 func ParseQuery(query string) (*Node, error) {
-    v, err :=  Parse("", []byte(query))
-    if err  != nil {
-        return  nil, getParseError(err)
-    }
-    return getRootNode(v)
+	v, err := Parse("", []byte(query))
+	if err != nil {
+		return nil, getParseError(err)
+	}
+	return getRootNode(v)
 }
 
 // ParseQueryReader parses the AQL query from an io.Reader and returns the query
 // root node
 func ParseQueryReader(queryReader io.Reader) (*Node, error) {
-    v, err :=  ParseReader("", queryReader)
-    if err  != nil {
-        return  nil, getParseError(err)
-    }
-    return getRootNode(v)
+	v, err := ParseReader("", queryReader)
+	if err != nil {
+		return nil, getParseError(err)
+	}
+	return getRootNode(v)
 }
 
-func getRootNode(v interface{})(*Node, error) {
-    switch t := v.(type){
-    case nil:
-        return nil, fmt.Errorf("Parser returned nil output")
-    case interface{}:
-        ta, ok := t.([]interface{})
-        if !ok {
-            return nil, fmt.Errorf("Parser did not return []interface{}, got: %#v", t)
-        }
-        rootNode, ok := ta[0].(*Node)
-        if !ok {
-            return nil, fmt.Errorf("Did not find root node where expected, found: %#v", ta[0])
-        }
-        return rootNode, nil
-    default:
-        return nil, fmt.Errorf("Parser returned unknown type: %T", t)
-    }
+func getRootNode(v interface{}) (*Node, error) {
+	switch t := v.(type) {
+	case nil:
+		return nil, fmt.Errorf("Parser returned nil output")
+	case interface{}:
+		ta, ok := t.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("Parser did not return []interface{}, got: %#v", t)
+		}
+		rootNode, ok := ta[0].(*Node)
+		if !ok {
+			return nil, fmt.Errorf("Did not find root node where expected, found: %#v", ta[0])
+		}
+		return rootNode, nil
+	default:
+		return nil, fmt.Errorf("Parser returned unknown type: %T", t)
+	}
 }
 
 func GetPrintableError(query string, err error) string {
-    pe, ok := err.(*ParseError)
-    if !ok {
-        return err.Error()
-    }
-    var sb strings.Builder
-    lines := strings.Split(query, "\n")
-    badLine := lines[pe.Line-1]
-    sb.WriteString(err.Error()+"\n")
-    sb.WriteString(badLine+"\n")
-    if pe.Column > 0 {
-        sb.WriteString(strings.Repeat(`~`, pe.Column-1))
-    }
-    sb.WriteString("^\n")
-    return sb.String() 
+	pe, ok := err.(*ParseError)
+	if !ok {
+		return err.Error()
+	}
+	var sb strings.Builder
+	lines := strings.Split(query, "\n")
+	badLine := lines[pe.Line-1]
+	sb.WriteString(err.Error() + "\n")
+	sb.WriteString(badLine + "\n")
+	if pe.Column > 0 {
+		sb.WriteString(strings.Repeat(`~`, pe.Column-1))
+	}
+	sb.WriteString("^\n")
+	return sb.String()
 }
 
 // unused, may be useful for other matches
 func toString(label interface{}) (string, error) {
-    var sb strings.Builder
-    value := label.([]interface{})
-    for _, i := range(value) {
-        if i == nil {
-            continue
-        }
-        switch b := i.(type) {
-        case []byte:
-            sb.WriteByte(b[0])
-        case string:
-            sb.WriteString(b)
-        case []interface{}:
-            s, err := toString(i)
+	var sb strings.Builder
+	value := label.([]interface{})
+	for _, i := range value {
+		if i == nil {
+			continue
+		}
+		switch b := i.(type) {
+		case []byte:
+			sb.WriteByte(b[0])
+		case string:
+			sb.WriteString(b)
+		case []interface{}:
+			s, err := toString(i)
 			if err != nil {
 				return "", err
 			}
-            sb.WriteString(s)
-        default:
-            return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v\n", i, i)
-        }
-    }
-    return sb.String(), nil
+			sb.WriteString(s)
+		default:
+			return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v\n", i, i)
+		}
+	}
+	return sb.String(), nil
 }
 func toIfaceSlice(v interface{}) []interface{} {
-    if v == nil {
-        return nil
-    }
-    return v.([]interface{})
+	if v == nil {
+		return nil
+	}
+	return v.([]interface{})
 }
 
 func getTokens(first, rest interface{}, idx int) []string {
-    out := []string{first.(string)}
-    restSl := toIfaceSlice(rest)
-    for _, v := range restSl {
-        expr := toIfaceSlice(v)
-        out = append(out, expr[idx].(string))
-    }
-    return out
+	out := []string{first.(string)}
+	restSl := toIfaceSlice(rest)
+	for _, v := range restSl {
+		expr := toIfaceSlice(v)
+		out = append(out, expr[idx].(string))
+	}
+	return out
 }
 }
 

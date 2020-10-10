@@ -41,11 +41,41 @@ type Comparison struct {
 	Values  []string
 }
 
+type ParseError struct {
+	Inner    error    `json:"inner"`
+	Line     int      `json:"line"`
+	Column   int      `json:"column"`
+	Offset   int      `json:"offset"`
+	Prefix   string   `json:"prefix"`
+	Expected []string `json:"expected"`
+}
+
+func (p *ParseError) Error() string {
+	return p.Prefix + ": " + p.Inner.Error()
+}
+
+func getParseError(err error) error {
+	switch ev := err.(type) {
+	case errList:
+		if pe, ok := ev[0].(*parserError); ok {
+			return &ParseError{
+				Inner:    pe.Inner,
+				Line:     pe.pos.line,
+				Column:   pe.pos.col,
+				Offset:   pe.pos.offset,
+				Prefix:   pe.prefix,
+				Expected: pe.expected,
+			}
+		}
+	}
+	return err
+}
+
 // ParseQuery parses the AQL query string and returns the query root node
 func ParseQuery(query string) (*Node, error) {
 	v, err := Parse("", []byte(query))
 	if err != nil {
-		return nil, err
+		return nil, getParseError(err)
 	}
 	return getRootNode(v)
 }
@@ -55,7 +85,7 @@ func ParseQuery(query string) (*Node, error) {
 func ParseQueryReader(queryReader io.Reader) (*Node, error) {
 	v, err := ParseReader("", queryReader)
 	if err != nil {
-		return nil, fmt.Errorf("parser error: %w", err)
+		return nil, getParseError(err)
 	}
 	return getRootNode(v)
 }
@@ -77,6 +107,23 @@ func getRootNode(v interface{}) (*Node, error) {
 	default:
 		return nil, fmt.Errorf("Parser returned unknown type: %T", t)
 	}
+}
+
+func GetPrintableError(query string, err error) string {
+	pe, ok := err.(*ParseError)
+	if !ok {
+		return err.Error()
+	}
+	var sb strings.Builder
+	lines := strings.Split(query, "\n")
+	badLine := lines[pe.Line-1]
+	sb.WriteString(err.Error() + "\n")
+	sb.WriteString(badLine + "\n")
+	if pe.Column > 0 {
+		sb.WriteString(strings.Repeat(`~`, pe.Column-1))
+	}
+	sb.WriteString("^\n")
+	return sb.String()
 }
 
 // unused, may be useful for other matches
