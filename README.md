@@ -26,3 +26,10 @@ Please make sure to update tests as appropriate.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
+
+## TODO
+* Typing/verifying of types in parser
+* Operator-first definitions
+* Pluggable string-based user-provided types
+* Pluggable user-provided operators
+* Flexible query backend with selectable language features (backend doesn't support clause)
