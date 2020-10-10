@@ -1,4 +1,4 @@
-package jsonquery
+package jsonmatch
 
 import (
 	"fmt"

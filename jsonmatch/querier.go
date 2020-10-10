@@ -1,4 +1,4 @@
-package jsonquery
+package jsonmatch
 
 import (
 	"encoding/json"
@@ -9,13 +9,13 @@ import (
 	"github.com/flowchartsman/aql/parser"
 )
 
-// Querier queries arbitrary json
-type Querier struct {
+// Matcher queries arbitrary json
+type Matcher struct {
 	query *parser.Node
 }
 
-// NewQuerier returns a new querier based on a parsed AQL query
-func NewQuerier(query string) (*Querier, error) {
+// NewMatcher returns a new matcher based on a parsed AQL query
+func NewMatcher(query string) (*Matcher, error) {
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
@@ -23,12 +23,13 @@ func NewQuerier(query string) (*Querier, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Querier{
+	return &Matcher{
 		query: rootnode,
 	}, nil
 }
 
-func (q *Querier) Match(jsonData io.Reader) (bool, error) {
+// Match returns whether or not the JSON in jsonData matches the provided query
+func (q *Matcher) Match(jsonData io.Reader) (bool, error) {
 	dec := json.NewDecoder(jsonData)
 	dec.UseNumber()
 	container, err := gabs.ParseJSONDecoder(dec)
@@ -38,7 +39,7 @@ func (q *Querier) Match(jsonData io.Reader) (bool, error) {
 	return q.rdMatch(container, q.query)
 }
 
-func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
+func (q *Matcher) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 	switch node.NodeType {
 	case parser.NodeOr:
 		match, err := q.rdMatch(c, node.Left)

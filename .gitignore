@@ -7,5 +7,5 @@
 *.out
 .vscode
 cmd/aqlgraph/aqlgraph
-cmd/aqltest/aqltest
-cmd/aqltest/*.json
+jsonmatch/cmd/matchtest/matchtest
+jsonmatch/cmd/matchtest/*.json

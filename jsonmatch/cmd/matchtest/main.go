@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/flowchartsman/aql/jsonquery"
+	"github.com/flowchartsman/aql/jsonmatch"
 	"github.com/flowchartsman/aql/parser"
 )
 
@@ -15,7 +15,7 @@ func main() {
 		log.Fatal("Usage: aql 'EXPR' <json file>")
 	}
 
-	q, err := jsonquery.NewQuerier(os.Args[1])
+	q, err := jsonmatch.NewMatcher(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}

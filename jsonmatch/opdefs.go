@@ -1,4 +1,4 @@
-package jsonquery
+package jsonmatch
 
 var operations = map[string]Operation{
 	`>`:  opGT,
