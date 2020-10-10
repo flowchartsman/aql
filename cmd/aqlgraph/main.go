@@ -18,7 +18,7 @@ func main() {
 	query := os.Args[1]
 	rootNode, err := parser.ParseQuery(query)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(parser.GetPrintableError(query, err))
 	}
 	makeGraph(os.Stdout, query, rootNode)
 }

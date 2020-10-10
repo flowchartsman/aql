@@ -26,7 +26,7 @@ func main() {
 
 	result, err := q.Match(file)
 	if err != nil {
-		log.Fatalf("error running query: %v", err)
+		log.Fatalf("error running query: %s", parser.GetPrintableError(os.Args[1], err))
 	}
 	fmt.Println(result)
 }
