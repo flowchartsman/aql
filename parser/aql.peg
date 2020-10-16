@@ -102,7 +102,7 @@ Field <- first:FieldPiece rest:('.' FieldPiece)* {
 
 FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star
 
-UnquotedFieldPiece <- [a-z]i[a-z0-9_]* {
+UnquotedFieldPiece <- [a-z]i[a-z0-9_]i* {
     return string(c.text), nil
 }
 
