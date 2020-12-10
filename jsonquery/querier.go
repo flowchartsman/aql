@@ -38,6 +38,13 @@ func (q *Querier) Match(jsonData io.Reader) (bool, error) {
 	return q.rdMatch(container, q.query)
 }
 
+func (q *Querier) MatchContainer(container *gabs.Container) (bool, error) {
+	if container == nil {
+		return false, fmt.Errorf("empty gabs container")
+	}
+	return q.rdMatch(container, q.query)
+}
+
 func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 	switch node.NodeType {
 	case parser.NodeOr:
