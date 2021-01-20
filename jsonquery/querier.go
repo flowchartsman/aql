@@ -65,7 +65,7 @@ func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		rmatch, err := q.rdMatch(c, node.Left)
+		rmatch, err := q.rdMatch(c, node.Right)
 		if err != nil {
 			return false, err
 		}
