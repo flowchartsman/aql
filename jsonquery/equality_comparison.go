@@ -61,3 +61,29 @@ func (s *stringEQComparator) Evaluate(lValues []string) (bool, error) {
 	}
 	return false, nil
 }
+
+var opNE = &negateComparison{opEQ}
+
+type negateComparison struct {
+	e *equalityComparison
+}
+
+func (ne *negateComparison) GetComparator(rValues []string) (Comparator, error) {
+	ec, err := ne.e.GetComparator((rValues))
+	if err != nil {
+		return nil, err
+	}
+	return &invertComp{ec}, nil
+}
+
+type invertComp struct {
+	c Comparator
+}
+
+func (i *invertComp) Evaluate(lValues []string) (bool, error) {
+	b, err := i.c.Evaluate(lValues)
+	if err == nil {
+		b = !b
+	}
+	return b, err
+}
