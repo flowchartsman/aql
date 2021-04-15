@@ -2,6 +2,7 @@ package jsonquery
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 
 	"github.com/araddon/dateparse"
@@ -28,6 +29,14 @@ func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error)
 	}
 	if b, err := strconv.ParseBool(rValues[0]); err == nil {
 		return &boolEQComparator{b}, nil
+	}
+	if len(rValues[0]) > 2 && rValues[0][0] == '/' && rValues[0][len(rValues[0])-1] == '/' {
+		// TODO: resolve ambiguity between "/a/" and regexp.Compile("a")
+		reg, err := regexp.Compile(rValues[0][1 : len(rValues[0])-1])
+		if err != nil {
+			return nil, fmt.Errorf("regular expression parse err: %w", err)
+		}
+		return &regexpEQComparator{reg}, nil
 	}
 	return &stringEQComparator{rValues[0]}, nil
 }
@@ -86,4 +95,17 @@ func (i *invertComp) Evaluate(lValues []string) (bool, error) {
 		b = !b
 	}
 	return b, err
+}
+
+type regexpEQComparator struct {
+	rex *regexp.Regexp
+}
+
+func (r *regexpEQComparator) Evaluate(lValues []string) (bool, error) {
+	for _, rs := range lValues {
+		if r.rex.MatchString(rs) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

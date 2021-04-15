@@ -152,13 +152,16 @@ SPECIFIC VALUE TYPES
 
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
-//TODO: REGEXP Type?
 //TODO!!: These should each have their own type that's determined during parsing and then each type tan say whether or not it can do an operation maybe
 //TODO: value specifiers like "reltime:(-2 days)"
-BareValue  <- Timestamp
+BareValue  <- RegexValue
+            / Timestamp
             / CIDRValue
             / NumericValue
             / BoolValue
+
+RegexValue <- '/' ( !REscapedChar . / '\\' '/' )* '/'
+REscapedChar ← [\x00-\x1f"/]
 
 BoolValue <- "false" /"true"
 
@@ -213,7 +216,7 @@ COMPARISON OPERATORS
 opCOMP <- opCustom
 / "><" {
     return string(c.text), nil
-} / [!~] {
+} / [!] {
     return string(c.text), nil
 } / [<>] '='? { 
     return string(c.text), nil
