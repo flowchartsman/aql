@@ -43,14 +43,7 @@ func (q *Querier) Match(jsonData io.Reader) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error parsing json: %w", err)
 	}
-	matched, err := q.rdMatch(container, q.query)
-	if err != nil {
-		if errors.Is(err, ErrPathNotFound) && !q.strictPath {
-			return false, nil
-		}
-		return false, err
-	}
-	return matched, nil
+	return q.rdMatch(container, q.query)
 }
 
 func (q *Querier) MatchContainer(container *gabs.Container) (bool, error) {
@@ -88,6 +81,9 @@ func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 	case parser.NodeTerminal:
 		lvals, err := getLvals(node.Comparison.Field, c)
 		if err != nil {
+			if errors.Is(err, ErrPathNotFound) && !q.strictPath {
+				return false, nil
+			}
 			return false, err
 		}
 		// TODO premake!
