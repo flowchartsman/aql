@@ -2,6 +2,7 @@ package jsonquery
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -11,11 +12,12 @@ import (
 
 // Querier queries arbitrary json
 type Querier struct {
-	query *parser.Node
+	query      *parser.Node
+	strictPath bool
 }
 
 // NewQuerier returns a new querier based on a parsed AQL query
-func NewQuerier(query string) (*Querier, error) {
+func NewQuerier(query string, options ...QueryOption) (*Querier, error) {
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
@@ -23,9 +25,15 @@ func NewQuerier(query string) (*Querier, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Querier{
+	q := &Querier{
 		query: rootnode,
-	}, nil
+	}
+	for _, o := range options {
+		if err := o(q); err != nil {
+			return nil, err
+		}
+	}
+	return q, nil
 }
 
 func (q *Querier) Match(jsonData io.Reader) (bool, error) {
@@ -35,7 +43,14 @@ func (q *Querier) Match(jsonData io.Reader) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error parsing json: %w", err)
 	}
-	return q.rdMatch(container, q.query)
+	matched, err := q.rdMatch(container, q.query)
+	if err != nil {
+		if errors.Is(err, ErrPathNotFound) && !q.strictPath {
+			return false, nil
+		}
+		return false, err
+	}
+	return matched, nil
 }
 
 func (q *Querier) MatchContainer(container *gabs.Container) (bool, error) {
@@ -90,10 +105,12 @@ func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 	}
 }
 
+var ErrPathNotFound = errors.New("path not found")
+
 func getLvals(path []string, container *gabs.Container) ([]string, error) {
 	target := container.S(path...)
 	if target == nil {
-		return nil, fmt.Errorf("path not found")
+		return nil, ErrPathNotFound
 	}
 
 	flat, err := target.Flatten()
@@ -116,4 +133,13 @@ func getLvals(path []string, container *gabs.Container) ([]string, error) {
 		}
 	}
 	return lvals, nil
+}
+
+type QueryOption func(q *Querier) error
+
+func StrictPath() QueryOption {
+	return func(q *Querier) error {
+		q.strictPath = true
+		return nil
+	}
 }
