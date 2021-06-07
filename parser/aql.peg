@@ -128,9 +128,19 @@ ValueList <- '[' space? first:Value rest:( space? ',' space? Value )* space? ']'
 Value <- QuotedValue {
     c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
     return strconv.Unquote(string(c.text))
-} / BareValue {
+} / RegexValue {
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    // TODO: below is handled in jsonquery at the moment, revisit when converting stuff to types
+    // return c.text = c.text[1:len(c.text)-1], nil
+    return string(c.text), nil
+} /
+BareValue {
     return string(c.text), nil
 }
+
+/*******************
+SPECIFIC VALUE TYPES
+********************/
 
 QuotedValue ← '"' ( !EscapedChar . / '\\' EscapeSequence )* '"'
 
@@ -146,22 +156,17 @@ HexDigit ← [0-9a-f]i
 
 ValueChars <- [a-zA-Z0-9 !]
 
-/*******************
-SPECIFIC VALUE TYPES
-********************/
+RegexValue <- '/' ( !REscapedChar . / '\\' '/' )* '/'
+REscapedChar ← [\x00-\x1f"/\\]
 
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
 //TODO!!: These should each have their own type that's determined during parsing and then each type tan say whether or not it can do an operation maybe
 //TODO: value specifiers like "reltime:(-2 days)"
-BareValue  <- RegexValue
-            / Timestamp
+BareValue  <- Timestamp
             / CIDRValue
             / NumericValue
             / BoolValue
-
-RegexValue <- '/' ( !REscapedChar . / '\\' '/' )* '/'
-REscapedChar ← [\x00-\x1f"/]
 
 BoolValue <- "false" /"true"
 
