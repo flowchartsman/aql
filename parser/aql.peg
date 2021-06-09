@@ -45,9 +45,13 @@ GRAMMAR
 *******
 *******/
 
-Start <- Query EOF
+Start <- query:Query EOF {
+    return query, nil
+}
 
-Query <- OrClause
+Query <- _ clause:OrClause _ {
+    return clause, nil
+}
 
 /****
 NODES
@@ -112,13 +116,11 @@ Field <- pieces:(FieldPiece ('.' FieldPiece)*) {
 
 FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star
 
-UnquotedFieldPiece <- [a-z0-9_]i+ {
+UnquotedFieldPiece <- [a-z0-9_-]i+ {
     return string(c.text), nil
 }
 
-QuotedFieldPiece <- QuotedValue {
-    return string(c.text), nil
-}
+QuotedFieldPiece <- QuotedValue
 
 Star <- '*' {
     return "*", nil
@@ -135,15 +137,8 @@ ValueList <- '[' space? first:Value rest:( space? ',' space? Value )* space? ']'
     return []string{value.(string)}, nil
 }
 
-Value <- QuotedValue {
-    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
-    return strconv.Unquote(string(c.text))
-} / RegexValue {
-    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
-    // TODO: below is handled in jsonquery at the moment, revisit when converting stuff to types
-    // return c.text = c.text[1:len(c.text)-1], nil
-    return string(c.text), nil
-} /
+Value <- QuotedValue / 
+RegexValue  /
 BareValue {
     return string(c.text), nil
 }
@@ -152,7 +147,10 @@ BareValue {
 SPECIFIC VALUE TYPES
 ********************/
 
-QuotedValue ← '"' ( !EscapedChar . / '\\' EscapeSequence )* '"'
+QuotedValue ← '"' ( !EscapedChar . / '\\' EscapeSequence )* '"' {
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    return strconv.Unquote(string(c.text))
+}
 
 EscapedChar ← [\x00-\x1f"\\]
 
