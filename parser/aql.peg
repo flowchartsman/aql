@@ -96,8 +96,18 @@ FIELDS
 ******/
 
 //TODO add array specifier? like foo.bar[*].baz[1]
-Field <- first:FieldPiece rest:('.' FieldPiece)* {
-    return getTokens(first, rest, 1), nil
+Field <- pieces:(FieldPiece ('.' FieldPiece)*) {
+    piecesSl := toIfaceSlice(pieces)
+    if len (piecesSl) == 0 {
+        return nil, fmt.Errorf("empty field")
+    }
+    field := []string{piecesSl[0].(string)}
+    restSl := toIfaceSlice(piecesSl[1])
+    for _, v := range restSl {
+        vSl := toIfaceSlice(v)
+        field = append(field, vSl[1].(string))
+    }
+    return field, nil
 }
 
 FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star

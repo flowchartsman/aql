@@ -53,16 +53,8 @@ func getRootNode(v interface{}) (*Node, error) {
 	switch t := v.(type) {
 	case nil:
 		return nil, fmt.Errorf("Parser returned nil output")
-	case interface{}:
-		ta, ok := t.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("Parser did not return []interface{}, got: %#v", t)
-		}
-		rootNode, ok := ta[0].(*Node)
-		if !ok {
-			return nil, fmt.Errorf("Did not find root node where expected, found: %#v", ta[0])
-		}
-		return rootNode, nil
+	case *Node:
+		return t, nil
 	default:
 		return nil, fmt.Errorf("Parser returned unknown type: %T", t)
 	}
