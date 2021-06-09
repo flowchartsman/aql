@@ -164,8 +164,14 @@ HexDigit ← [0-9a-f]i
 
 ValueChars <- [a-zA-Z0-9 !]
 
-RegexValue <- '/' ( !REscapedChar . / '\\' '/' )* '/'
-REscapedChar ← [\x00-\x1f"/\\]
+RegexValue ← '/' RegexChar* '/'{
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    // TODO: below is handled in jsonquery at the moment, revisit when converting stuff to types
+    // return c.text = c.text[1:len(c.text)-1], nil
+    return string(c.text), nil
+} 
+RegexChar ← !( '/' / '\\' / EOL) . / '\\' RegexEscape
+RegexEscape ← !(EOL / EOF ) .
 
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
