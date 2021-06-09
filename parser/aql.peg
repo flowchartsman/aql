@@ -184,7 +184,7 @@ BareValue  <- Timestamp
 
 BoolValue <- "false" /"true"
 
-NumericValue <- Float / Integer
+NumericValue <- '-'? (Float / Integer)
 
 Float <- [0-9]+ '.' [0-9]+
 
