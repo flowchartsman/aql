@@ -249,7 +249,11 @@ opCustom <- '=' opname:[a-z]i+ '='{
 WHITESPACE AND TERMINAL
 ***********************/
 
+_ "whitespace" <- [ \n\t\r]*
+
 space <- [ \n\t\r]+
+
+EOL ← '\n'
 
 EOF = !.
 
