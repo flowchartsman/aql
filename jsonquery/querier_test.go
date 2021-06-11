@@ -49,6 +49,7 @@ func TestRegexMatch(t *testing.T) {
 	t.Run("case-insensitive match", testJSQuery(`text.name:/(?i)^andy/`, true))
 	t.Run("!case-insensitive match", testJSQuery(`text.name:/^andy/`, false))
 	t.Run("unicode alias", testJSQuery(`text.description:/\p{Han}{3}/`, true))
+	t.Run("escaped frontslashes", testJSQuery(`date.shortDate:/^\d+\/\d+\/\d+/`, true))
 
 	// t.Run("unicode alias", testJSQuery(`text.likes:/\p{Han}.*\(food\)$/`, true))
 }
