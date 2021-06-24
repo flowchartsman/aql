@@ -66,16 +66,24 @@ OrClause <- lhs:AndClause space logicalOR space rhs:OrClause {
     }, nil
 } / AndClause
 
-AndClause <- lhs:Comparison space logicalAND space rhs:AndClause {
+AndClause <- lhs:NotClause space logicalAND space rhs:AndClause {
     return &Node {
         NodeType: NodeAnd,
         Left: lhs.(*Node),
         Right: rhs.(*Node),
     }, nil
+} / NotClause
+
+NotClause <- logicalNOT cmp:Comparison {
+    return &Node {
+        NodeType: NodeNot,
+        Left: cmp.(*Node),
+        Right: nil,
+    }, nil
 } / Comparison
 
 //TODO: Negatable
-Comparison <- '(' space? query:Query space? ')'{
+Comparison <- '(' space? query:OrClause space? ')'{
     return query, nil
 } /  field:Field ':' operation:opCOMP? space? values:ValueList {
     var opOut string
@@ -175,14 +183,18 @@ RegexEscape ← !(EOL / EOF ) .
 
 //more here, longest rule first
 //TODO: maybe constrain non-numeric barevalues to special ops?
-//TODO!!: These should each have their own type that's determined during parsing and then each type tan say whether or not it can do an operation maybe
+//TODO!!: These should each have their own type that's determined during parsing and then each type can say whether or not it can do an operation maybe
 //TODO: value specifiers like "reltime:(-2 days)"
 BareValue  <- Timestamp
             / CIDRValue
             / NumericValue
+            / ExistsValue
             / BoolValue
 
-BoolValue <- "false" /"true"
+// TODO: Reject non-equals op for exists query
+ExistsValue <- "exists"
+
+BoolValue <- "false" / "true"
 
 NumericValue <- '-'? (Float / Integer)
 
@@ -227,6 +239,8 @@ LOGICAL OPERATORS
 logicalOR <- "OR"
 
 logicalAND <- "AND"
+
+logicalNOT <- "NOT" space / '!' space?
 
 /*******************
 COMPARISON OPERATORS

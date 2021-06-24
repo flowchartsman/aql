@@ -30,6 +30,11 @@ const jsondoc = `{
 	}
 }`
 
+func TestExistsMatch(t *testing.T) {
+	t.Run("exists", testJSQuery(`text.name:exists`, true))
+	t.Run("not exists", testJSQuery(`!text.greatest_fear:exists`, true))
+}
+
 func TestDateMatch(t *testing.T) {
 	t.Run("fullDate < fullDate", testJSQuery(`date.fullDate:<1980-01-01`, true))
 	t.Run("fullDate > fullDate", testJSQuery(`date.fullDate:>1970-01-01`, true))

@@ -359,6 +359,81 @@ func TestParseQuery(t *testing.T) {
 		},
 	}))
 
+	t.Run("simple NOT clause", testParseQuery(`!name:"Hans" AND surname:"Wurst"`, &Node{
+		NodeType: NodeAnd,
+		Left: &Node{
+			NodeType: NodeNot,
+			Left: &Node{
+				NodeType: NodeTerminal,
+				Comparison: Comparison{
+					Op:      "==",
+					Negated: false,
+					Field:   []string{`name`},
+					Values:  []string{`Hans`},
+				},
+			},
+		},
+		Right: &Node{
+			NodeType: NodeTerminal,
+			Comparison: Comparison{
+				Op:      "==",
+				Negated: false,
+				Field:   []string{`surname`},
+				Values:  []string{`Wurst`},
+			},
+		},
+	}))
+
+	t.Run("alternate simple NOT clause", testParseQuery(`NOT name:"Hans" AND surname:"Wurst"`, &Node{
+		NodeType: NodeAnd,
+		Left: &Node{
+			NodeType: NodeNot,
+			Left: &Node{
+				NodeType: NodeTerminal,
+				Comparison: Comparison{
+					Op:      "==",
+					Negated: false,
+					Field:   []string{`name`},
+					Values:  []string{`Hans`},
+				},
+			},
+		},
+		Right: &Node{
+			NodeType: NodeTerminal,
+			Comparison: Comparison{
+				Op:      "==",
+				Negated: false,
+				Field:   []string{`surname`},
+				Values:  []string{`Wurst`},
+			},
+		},
+	}))
+
+	t.Run("simple NOT clause with parenthesis", testParseQuery(`!(name:"Hans" AND surname:"Wurst")`, &Node{
+		NodeType: NodeNot,
+		Left: &Node{
+			NodeType: NodeAnd,
+			Left: &Node{
+				NodeType: NodeTerminal,
+				Comparison: Comparison{
+					Op:      "==",
+					Negated: false,
+					Field:   []string{`name`},
+					Values:  []string{`Hans`},
+				},
+			},
+			Right: &Node{
+				NodeType: NodeTerminal,
+				Comparison: Comparison{
+					Op:      "==",
+					Negated: false,
+					Field:   []string{`surname`},
+					Values:  []string{`Wurst`},
+				},
+			},
+		},
+	}))
+
 	t.Run("float value", testParseQuery(`floppy:1.4`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{

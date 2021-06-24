@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"strconv"
@@ -20,19 +19,16 @@ func main() {
 	if err != nil {
 		log.Fatal(parser.GetPrintableError(query, err))
 	}
-	makeGraph(os.Stdout, query, rootNode)
+	makeGraph(query, rootNode)
 }
 
-func makeGraph(w io.StringWriter, title string, rootNode *parser.Node) {
-	//w.WriteString(fmt.Sprintf(premable, label))
+func makeGraph(title string, rootNode *parser.Node) {
 	id := 0
 	g := &graph{
 		Title: title,
 	}
 	graphNodes(g, rootNode, &id)
 	graphTmpl.Execute(os.Stdout, g)
-	//graphNodes(w, rootNode, &id)
-	//w.WriteString(`}`)
 }
 
 const (
@@ -46,6 +42,7 @@ type GraphnodeProp struct {
 	Name   string
 	Values []string
 }
+
 type graphNode struct {
 	ID    string
 	Shape string
@@ -83,12 +80,15 @@ func graphNodes(g *graph, node *parser.Node, id *int) {
 		current.Label = "OR"
 		current.Color = colorOr
 		current.Shape = "box"
+	case parser.NodeNot:
+		current.Label = "NOT"
+		current.Color = colorNot
+		current.Shape = "box"
 	case parser.NodeTerminal:
 		current.Shape = "plain"
 		current.Color = colorTerm
 		current.Field = strings.Join(node.Comparison.Field, `.`)
 		current.addProp("op", node.Comparison.Op)
-		//current.addProp("negative", fmt.Sprintf(`%v`, node.Comparison.Negated))
 		current.addProp("values", node.Comparison.Values...)
 	}
 	g.addNode(current)

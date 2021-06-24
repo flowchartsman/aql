@@ -13,6 +13,7 @@ type NodeType int
 // Node Types
 const (
 	_ NodeType = iota
+	NodeNot
 	NodeAnd
 	NodeOr
 	NodeTerminal
@@ -52,11 +53,11 @@ func (p *ParseError) Error() string {
 func getRootNode(v interface{}) (*Node, error) {
 	switch t := v.(type) {
 	case nil:
-		return nil, fmt.Errorf("Parser returned nil output")
+		return nil, fmt.Errorf("parser returned nil output")
 	case *Node:
 		return t, nil
 	default:
-		return nil, fmt.Errorf("Parser returned unknown type: %T", t)
+		return nil, fmt.Errorf("parser returned unknown type: %T", t)
 	}
 }
 

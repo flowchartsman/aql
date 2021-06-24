@@ -14,6 +14,14 @@ var opEQ = &equalityComparison{}
 type equalityComparison struct{}
 
 func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error) {
+	// This function attempts to figure out what kind of string has come out of the parser, even though
+	// the parser can already tell us a lot of type information. Pending integration of these types in the next version
+	// that means this function handles most of the string massaging into types. An unfortunate side effect of this is that
+	// currently there's no way to distinguish between
+	// foo:/hello/
+	// and
+	// foo:"/hello/"
+	// When the former should be a regexp match, and the latter should be a string.
 	if len(rValues) != 1 {
 		return nil, fmt.Errorf("too many values for equality comparison. want 1, got %d", len(rValues))
 	}

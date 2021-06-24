@@ -78,13 +78,25 @@ func (q *Querier) rdMatch(c *gabs.Container, node *parser.Node) (bool, error) {
 			return false, err
 		}
 		return lmatch && rmatch, nil
+	case parser.NodeNot:
+		// NOT nodes only have a LHS and return the negative of that match
+		match, err := q.rdMatch(c, node.Left)
+		if err != nil {
+			return false, err
+		}
+		return !match, nil
 	case parser.NodeTerminal:
+		// hack for exists query for now.
+		existsQuery := len(node.Comparison.Values) == 1 && node.Comparison.Values[0] == "exists"
 		lvals, err := getLvals(node.Comparison.Field, c)
 		if err != nil {
-			if errors.Is(err, ErrPathNotFound) && !q.strictPath {
+			if errors.Is(err, ErrPathNotFound) && (existsQuery || !q.strictPath) {
 				return false, nil
 			}
 			return false, err
+		}
+		if existsQuery {
+			return true, nil
 		}
 		// TODO premake!
 		operation, ok := operations[node.Comparison.Op]
