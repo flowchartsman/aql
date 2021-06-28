@@ -81,7 +81,6 @@ NotClause <- logicalNOT cmp:Comparison {
     }, nil
 } / Comparison
 
-//TODO: Negatable
 Comparison <- '(' space? query:OrClause space? ')'{
     return query, nil
 } /  field:Field ':' operation:opCOMP? space? values:ValueList {
