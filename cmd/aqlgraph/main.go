@@ -95,31 +95,11 @@ func graphNodes(g *graph, node *parser.Node, id *int) {
 	if node.Left != nil {
 		*id++
 		current.Left = strconv.Itoa(*id)
-		if node.Left.Comparison.Negated {
-			g.addNode(&graphNode{
-				Label: "NOT",
-				Color: colorNot,
-				Shape: "circle",
-				ID:    strconv.Itoa(*id),
-				Left:  strconv.Itoa(*id + 1),
-			})
-			*id++
-		}
 		graphNodes(g, node.Left, id)
 	}
 	if node.Right != nil {
 		*id++
 		current.Right = strconv.Itoa(*id)
-		if node.Right.Comparison.Negated {
-			g.addNode(&graphNode{
-				Label: "NOT",
-				Color: colorNot,
-				Shape: "circle",
-				ID:    strconv.Itoa(*id),
-				Right: strconv.Itoa(*id + 1),
-			})
-			*id++
-		}
 		graphNodes(g, node.Right, id)
 	}
 }

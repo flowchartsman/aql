@@ -57,7 +57,6 @@ Query <- _ clause:OrClause _ {
 NODES
 *****/
 
-//TODO: Negatable
 OrClause <- lhs:AndClause space logicalOR space rhs:OrClause {
     return &Node {
         NodeType: NodeOr,
@@ -96,7 +95,6 @@ Comparison <- '(' space? query:OrClause space? ')'{
         NodeType: NodeTerminal,
         Comparison:Comparison{
             Op: opOut,
-            Negated: false,  //TODO
             Field: field.([]string),
             Values: values.([]string),
         },
@@ -249,7 +247,7 @@ COMPARISON OPERATORS
 opCOMP <- opCustom
 / "><" {
     return string(c.text), nil
-} / [!] {
+} / [~] {
     return string(c.text), nil
 } / [<>] '='? { 
     return string(c.text), nil

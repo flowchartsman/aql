@@ -10,10 +10,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("simple minimal condition", testParseQuery(`name:"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -22,10 +21,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("quoted field", testParseQuery(`"name":"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -34,10 +32,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("field with leading underscore", testParseQuery(`_name:"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`_name`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`_name`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -46,10 +43,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("field with leading underscore qupted", testParseQuery(`"_name":"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`_name`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`_name`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -58,10 +54,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("field with just a number", testParseQuery(`0:"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`0`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`0`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -70,10 +65,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("multi part field name", testParseQuery(`name.givenname:"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`, `givenname`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`name`, `givenname`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -82,10 +76,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("quoted multi part field name", testParseQuery(`name."GivenName":"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`, `GivenName`},
-			Values:  []string{`siegfried`},
+			Op:     "==",
+			Field:  []string{`name`, `GivenName`},
+			Values: []string{`siegfried`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -94,10 +87,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("field name with dots and quotes", testParseQuery(`"na.me"."Given\"Name":"siegfried"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`na.me`, `Given"Name`},
-			Values:  []string{"siegfried"},
+			Op:     "==",
+			Field:  []string{`na.me`, `Given"Name`},
+			Values: []string{"siegfried"},
 		},
 		Left:  nil,
 		Right: nil,
@@ -108,19 +100,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -130,19 +120,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -152,19 +140,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Siegfried`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Siegfried`},
 			},
 		},
 	}))
@@ -174,19 +160,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Siegfried`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Siegfried`},
 			},
 		},
 	}))
@@ -196,19 +180,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Siegfried`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Siegfried`},
 			},
 		},
 	}))
@@ -218,19 +200,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -240,19 +220,17 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -262,10 +240,9 @@ func TestParseQuery(t *testing.T) {
 		Left: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Hans`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Hans`},
 			},
 		},
 		Right: &Node{
@@ -273,19 +250,17 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Siegfried`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Siegfried`},
 				},
 			},
 			Right: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`age`},
-					Values:  []string{`9001`},
+					Op:     "==",
+					Field:  []string{`age`},
+					Values: []string{`9001`},
 				},
 			},
 		},
@@ -298,29 +273,26 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Hans`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Hans`},
 				},
 			},
 			Right: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`age`},
-					Values:  []string{`9001`},
+					Op:     "==",
+					Field:  []string{`age`},
+					Values: []string{`9001`},
 				},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Siegfried`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Siegfried`},
 			},
 		},
 	}))
@@ -332,29 +304,26 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Hans`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Hans`},
 				},
 			},
 			Right: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`age`},
-					Values:  []string{`9001`},
+					Op:     "==",
+					Field:  []string{`age`},
+					Values: []string{`9001`},
 				},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`name`},
-				Values:  []string{`Siegfried`},
+				Op:     "==",
+				Field:  []string{`name`},
+				Values: []string{`Siegfried`},
 			},
 		},
 	}))
@@ -366,20 +335,18 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Hans`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Hans`},
 				},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -391,20 +358,18 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Hans`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Hans`},
 				},
 			},
 		},
 		Right: &Node{
 			NodeType: NodeTerminal,
 			Comparison: Comparison{
-				Op:      "==",
-				Negated: false,
-				Field:   []string{`surname`},
-				Values:  []string{`Wurst`},
+				Op:     "==",
+				Field:  []string{`surname`},
+				Values: []string{`Wurst`},
 			},
 		},
 	}))
@@ -416,19 +381,17 @@ func TestParseQuery(t *testing.T) {
 			Left: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`name`},
-					Values:  []string{`Hans`},
+					Op:     "==",
+					Field:  []string{`name`},
+					Values: []string{`Hans`},
 				},
 			},
 			Right: &Node{
 				NodeType: NodeTerminal,
 				Comparison: Comparison{
-					Op:      "==",
-					Negated: false,
-					Field:   []string{`surname`},
-					Values:  []string{`Wurst`},
+					Op:     "==",
+					Field:  []string{`surname`},
+					Values: []string{`Wurst`},
 				},
 			},
 		},
@@ -437,10 +400,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("float value", testParseQuery(`floppy:1.4`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`floppy`},
-			Values:  []string{`1.4`},
+			Op:     "==",
+			Field:  []string{`floppy`},
+			Values: []string{`1.4`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -449,10 +411,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("negative float value", testParseQuery(`floppy:-1.4`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`floppy`},
-			Values:  []string{`-1.4`},
+			Op:     "==",
+			Field:  []string{`floppy`},
+			Values: []string{`-1.4`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -461,10 +422,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("int value", testParseQuery(`memory:32`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`memory`},
-			Values:  []string{`32`},
+			Op:     "==",
+			Field:  []string{`memory`},
+			Values: []string{`32`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -473,10 +433,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("negative int value", testParseQuery(`memory:-32`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`memory`},
-			Values:  []string{`-32`},
+			Op:     "==",
+			Field:  []string{`memory`},
+			Values: []string{`-32`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -485,10 +444,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("boolean (true) value", testParseQuery(`isAdmin:true`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`isAdmin`},
-			Values:  []string{`true`},
+			Op:     "==",
+			Field:  []string{`isAdmin`},
+			Values: []string{`true`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -497,10 +455,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("boolean (false) value", testParseQuery(`writesGoodParsers:false`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`writesGoodParsers`},
-			Values:  []string{`false`},
+			Op:     "==",
+			Field:  []string{`writesGoodParsers`},
+			Values: []string{`false`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -509,10 +466,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("cidr value", testParseQuery(`internal:192.168.1.0/24`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`internal`},
-			Values:  []string{`192.168.1.0/24`},
+			Op:     "==",
+			Field:  []string{`internal`},
+			Values: []string{`192.168.1.0/24`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -521,10 +477,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("fullDate value", testParseQuery(`Andy:1979-10-03`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`Andy`},
-			Values:  []string{`1979-10-03`},
+			Op:     "==",
+			Field:  []string{`Andy`},
+			Values: []string{`1979-10-03`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -533,10 +488,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("dateTime value", testParseQuery(`AndyPrecise:2021-06-08T20:56:33+00:00`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`AndyPrecise`},
-			Values:  []string{`2021-06-08T20:56:33+00:00`},
+			Op:     "==",
+			Field:  []string{`AndyPrecise`},
+			Values: []string{`2021-06-08T20:56:33+00:00`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -545,9 +499,8 @@ func TestParseQuery(t *testing.T) {
 	t.Run("regexp value", testParseQuery(`domains:/.*\\.[a-z0-9]*\\.local/`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`domains`},
+			Op:    "==",
+			Field: []string{`domains`},
 			// TODO: Revisit when types are done to strip enclosing / (see aql.peg)
 			// Values:  []string{`.*\\.[a-z0-9]*\\.local`},
 			Values: []string{`/.*\\.[a-z0-9]*\\.local/`},
@@ -559,10 +512,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator == (implicit)", testParseQuery(`answer:42`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`answer`},
-			Values:  []string{`42`},
+			Op:     "==",
+			Field:  []string{`answer`},
+			Values: []string{`42`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -571,22 +523,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator ><", testParseQuery(`whiskers:><0`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "><",
-			Negated: false,
-			Field:   []string{`whiskers`},
-			Values:  []string{`0`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator !", testParseQuery(`all:!1`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:      "!",
-			Negated: false,
-			Field:   []string{`all`},
-			Values:  []string{`1`},
+			Op:     "><",
+			Field:  []string{`whiskers`},
+			Values: []string{`0`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -595,10 +534,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator >", testParseQuery(`over9000:>9000`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      ">",
-			Negated: false,
-			Field:   []string{`over9000`},
-			Values:  []string{`9000`},
+			Op:     ">",
+			Field:  []string{`over9000`},
+			Values: []string{`9000`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -607,10 +545,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator >=", testParseQuery(`almost:>=9000`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      ">=",
-			Negated: false,
-			Field:   []string{`almost`},
-			Values:  []string{`9000`},
+			Op:     ">=",
+			Field:  []string{`almost`},
+			Values: []string{`9000`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -619,10 +556,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator <", testParseQuery(`alone:<2`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "<",
-			Negated: false,
-			Field:   []string{`alone`},
-			Values:  []string{`2`},
+			Op:     "<",
+			Field:  []string{`alone`},
+			Values: []string{`2`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -631,10 +567,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("comparator <=", testParseQuery(`pair:<=2`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "<=",
-			Negated: false,
-			Field:   []string{`pair`},
-			Values:  []string{`2`},
+			Op:     "<=",
+			Field:  []string{`pair`},
+			Values: []string{`2`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -643,10 +578,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("allow leading whitespace", testParseQuery(` name:"Peter"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`},
-			Values:  []string{`Peter`},
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`Peter`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -655,10 +589,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("allow trailing whitespace", testParseQuery(`name:"Peter" `, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`},
-			Values:  []string{`Peter`},
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`Peter`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -667,10 +600,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("allow whitespace before value", testParseQuery(`name: "Peter"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`name`},
-			Values:  []string{`Peter`},
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`Peter`},
 		},
 		Left:  nil,
 		Right: nil,
@@ -679,10 +611,9 @@ func TestParseQuery(t *testing.T) {
 	t.Run("allow dash in field name", testParseQuery(`na-me: "Peter"`, &Node{
 		NodeType: NodeTerminal,
 		Comparison: Comparison{
-			Op:      "==",
-			Negated: false,
-			Field:   []string{`na-me`},
-			Values:  []string{`Peter`},
+			Op:     "==",
+			Field:  []string{`na-me`},
+			Values: []string{`Peter`},
 		},
 		Left:  nil,
 		Right: nil,

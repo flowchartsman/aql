@@ -29,10 +29,9 @@ type Node struct {
 
 // Comparison is an individual comparision operation on a terminal node
 type Comparison struct {
-	Op      string
-	Negated bool
-	Field   []string
-	Values  []string
+	Op     string
+	Field  []string
+	Values []string
 }
 
 // ParseError is the exported error type for parsing errors with detailed information as to where they occurred
