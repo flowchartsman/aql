@@ -27,6 +27,15 @@ const jsondoc = `{
 		"int": 1,
 		"float": 1.1,
 		"not": "hello"
+	},
+	"attributes": {
+		"nice": true,
+		"dead": false,
+		"fun":"true",
+		"enjoys_excessive_tests":"false",
+		"likes_binary": 1,
+		"killer_robot": 0,
+		"ternary": 3
 	}
 }`
 
@@ -47,16 +56,24 @@ func TestDateMatch(t *testing.T) {
 	t.Run("!date between", testJSQuery(`date.fullDate:><[1970-01-03,1970-01-04]`, false))
 }
 
-func TestRegexMatch(t *testing.T) {
-	t.Run("prefix match", testJSQuery(`text.name:/^And/`, true))
-	t.Run("suffix match", testJSQuery(`text.name:/dy$/`, true))
-	t.Run("basic match", testJSQuery(`text.name:/nd/`, true))
-	t.Run("case-insensitive match", testJSQuery(`text.name:/(?i)^andy/`, true))
-	t.Run("!case-insensitive match", testJSQuery(`text.name:/^andy/`, false))
-	t.Run("unicode alias", testJSQuery(`text.description:/\p{Han}{3}/`, true))
-	t.Run("escaped frontslashes", testJSQuery(`date.shortDate:/^\d+\/\d+\/\d+/`, true))
-
-	// t.Run("unicode alias", testJSQuery(`text.likes:/\p{Han}.*\(food\)$/`, true))
+func TestSimilarityMatch(t *testing.T) {
+	t.Run("regexp prefix match", testJSQuery(`text.name:~/^And/`, true))
+	t.Run("regexp suffix match", testJSQuery(`text.name:~/dy$/`, true))
+	t.Run("regexp basic match", testJSQuery(`text.name:~/nd/`, true))
+	t.Run("regexp case-insensitive match", testJSQuery(`text.name:~/(?i)^andy/`, true))
+	t.Run("regexp case-sensitive match fail", testJSQuery(`text.name:~/^andy/`, false))
+	t.Run("regexp unicode alias", testJSQuery(`text.description:~/\p{Han}{3}/`, true))
+	t.Run("regexp escaped frontslashes", testJSQuery(`date.shortDate:~/^\d+\/\d+\/\d+/`, true))
+	t.Run("wildcard prefix", testJSQuery(`text.likes:~"Pizza*"`, true))
+	t.Run("wildcard suffix", testJSQuery(`text.likes:~"*(dog)"`, true))
+	t.Run("truthy true bool", testJSQuery(`attributes.nice:~true`, true))
+	t.Run("truthy true string", testJSQuery(`attributes.fun:~true`, true))
+	t.Run("truthy true int", testJSQuery(`attributes.likes_binary:~true`, true))
+	t.Run("truthy false bool", testJSQuery(`attributes.dead:~false`, true))
+	t.Run("truthy false string", testJSQuery(`attributes.enjoys_excessive_tests:~false`, true))
+	t.Run("truthy false int", testJSQuery(`attributes.killer_robot:~false`, true))
+	t.Run("non-truthy isn't true", testJSQuery(`attributes.ternary:~true`, false))
+	t.Run("non-truthy isn't false", testJSQuery(`attributes.ternary:~false`, false))
 }
 
 func TestNumericMatch(t *testing.T) {

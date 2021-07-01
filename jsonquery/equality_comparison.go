@@ -18,10 +18,10 @@ func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error)
 	// the parser can already tell us a lot of type information. Pending integration of these types in the next version
 	// that means this function handles most of the string massaging into types. An unfortunate side effect of this is that
 	// currently there's no way to distinguish between
-	// foo:/hello/
+	// foo:true
 	// and
-	// foo:"/hello/"
-	// When the former should be a regexp match, and the latter should be a string.
+	// foo:"true"
+	// When the former should be a boolean match, and the latter should be a string.
 	if len(rValues) != 1 {
 		return nil, fmt.Errorf("too many values for equality comparison. want 1, got %d", len(rValues))
 	}
@@ -37,14 +37,6 @@ func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error)
 	}
 	if b, err := strconv.ParseBool(rValues[0]); err == nil {
 		return &boolEQComparator{b}, nil
-	}
-	if len(rValues[0]) > 2 && rValues[0][0] == '/' && rValues[0][len(rValues[0])-1] == '/' {
-		// TODO: resolve ambiguity between "/a/" and regexp.Compile("a")
-		reg, err := regexp.Compile(rValues[0][1 : len(rValues[0])-1])
-		if err != nil {
-			return nil, fmt.Errorf("regular expression parse err: %w", err)
-		}
-		return &regexpEQComparator{reg}, nil
 	}
 	return &stringEQComparator{rValues[0]}, nil
 }
