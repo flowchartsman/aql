@@ -19,6 +19,14 @@ func getParseError(err error) error {
 	return err
 }
 
+// TODO: In addition to type annotation, there needs to be a semantic analysis layer to check type and arity concordance and collapse unncessary clauses and such. This will tie in with operator "registration", which allows new operators to specify their input types and arity or even extend the operating types of extant operators. This may require a new structure past the basic node.
+
+// TODO: PLUGINS
+// operator: accepts, validate, arity
+// function: types for value generators? multi-arity?, something to specify whether function needs to be rerun for each comparator.
+
+// special exceptions for operators like "exists", which should only ever have an arity of one
+
 // ParseQuery parses the AQL query string and returns the query root node
 func ParseQuery(query string) (*Node, error) {
 	v, err := Parse("", []byte(query))
