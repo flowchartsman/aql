@@ -132,10 +132,17 @@ func getLvals(path []string, container *gabs.Container) ([]string, error) {
 	}
 
 	lvals := make([]string, 0, len(flat))
+	// TODO: need to apply JSON types to lvals so that "true" != true and operators can pick their types
 	for _, v := range flat {
 		switch vv := v.(type) {
 		case json.Number:
 			lvals = append(lvals, vv.String())
+		case bool:
+			if vv {
+				lvals = append(lvals, "true")
+			} else {
+				lvals = append(lvals, "false")
+			}
 		case string:
 			lvals = append(lvals, vv)
 		}
