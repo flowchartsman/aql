@@ -7,5 +7,4 @@ var operations = map[string]Operation{
 	`<=`: opLTE,
 	`><`: opBetween,
 	`==`: opEQ,
-	`!`:  opNE,
 }
