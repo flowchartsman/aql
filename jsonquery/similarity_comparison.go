@@ -2,9 +2,13 @@ package jsonquery
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 )
+
+// regexp to quickly identify CIDRs for selection pending deeper type integration
+var cidrRex = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,3}$`)
 
 var opSim = &similarityComparison{}
 
@@ -27,12 +31,20 @@ func (s *similarityComparison) GetComparator(rValues []string) (Comparator, erro
 			return nil, fmt.Errorf("regular expression parse err: %w", err)
 		}
 		return &regexpSimComparator{reg}, nil
-	default:
-		if strings.ContainsAny(cString, `*?`) {
-			return &regexpSimComparator{wildCardRegexp(cString)}, nil
+	case cidrRex.MatchString(cString):
+		println("cidr found")
+		_, net, err := net.ParseCIDR(cString)
+		if err != nil {
+			return nil, fmt.Errorf("CIDR parse err: %w", err)
 		}
-		return &stringEQComparator{cString}, nil
+		return &netSimComparator{net}, nil
 	}
+	// otherwise, check for wildcards
+	if strings.ContainsAny(cString, `*?`) {
+		return &regexpSimComparator{wildCardRegexp(cString)}, nil
+	}
+	// finding none, consider it a regular string comparator
+	return &stringEQComparator{cString}, nil
 }
 
 type regexpSimComparator struct {
@@ -92,4 +104,17 @@ func wildCardRegexp(wcString string) *regexp.Regexp {
 	reStr.WriteString(regexp.QuoteMeta(accum.String()))
 	reStr.WriteString(`$`)
 	return regexp.MustCompile(reStr.String())
+}
+
+type netSimComparator struct {
+	net *net.IPNet
+}
+
+func (n *netSimComparator) Evaluate(lValues []string) (bool, error) {
+	for _, ls := range lValues {
+		if addr := net.ParseIP(ls); addr != nil && n.net.Contains(addr) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

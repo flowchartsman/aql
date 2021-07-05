@@ -36,6 +36,9 @@ const jsondoc = `{
 		"likes_binary": 1,
 		"killer_robot": 0,
 		"ternary": 3
+	},
+	"net": {
+		"router": "192.168.1.0"
 	}
 }`
 
@@ -74,6 +77,9 @@ func TestSimilarityMatch(t *testing.T) {
 	t.Run("truthy false int", testJSQuery(`attributes.killer_robot:~false`, true))
 	t.Run("non-truthy isn't true", testJSQuery(`attributes.ternary:~true`, false))
 	t.Run("non-truthy isn't false", testJSQuery(`attributes.ternary:~false`, false))
+	t.Run("valid net contains", testJSQuery(`net.router:~192.168.1.0/24`, true))
+	t.Run("valid net does not contain", testJSQuery(`net.router:~192.168.2.0/24`, false))
+	t.Run("invalid address not contained", testJSQuery(`text.name:~192.168.2.0/24`, false))
 }
 
 func TestNumericMatch(t *testing.T) {
