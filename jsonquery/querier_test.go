@@ -55,8 +55,8 @@ func TestDateMatch(t *testing.T) {
 	t.Run("dateTime < dateTime", testJSQuery(`date.dateTime:<1970-01-02T15:53:34+00:00`, true))
 	t.Run("writtenDate < fullDate", testJSQuery(`date.writtenDate:<1970-02-01`, true))
 	t.Run("!fullDate > fullDate", testJSQuery(`date.fullDate:>1980-01-01`, false))
-	t.Run("date between", testJSQuery(`date.fullDate:><[1970-01-01,1970-01-03]`, true))
-	t.Run("!date between", testJSQuery(`date.fullDate:><[1970-01-03,1970-01-04]`, false))
+	t.Run("date between", testJSQuery(`date.fullDate:><(1970-01-01,1970-01-03)`, true))
+	t.Run("!date between", testJSQuery(`date.fullDate:><(1970-01-03,1970-01-04)`, false))
 }
 
 func TestSimilarityMatch(t *testing.T) {

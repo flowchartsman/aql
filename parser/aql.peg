@@ -144,7 +144,7 @@ VALUES
 ******/
 
 //ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
-ValueList <- '[' space? first:Value rest:( space? ',' space? Value )* space? ']' {
+ValueList <- '(' space? first:Value rest:( space? ',' space? Value )* space? ')' {
     return getTokens(first, rest, 3), nil
 } / value:Value {
     return []string{value.(string)}, nil
