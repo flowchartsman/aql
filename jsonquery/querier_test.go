@@ -42,6 +42,11 @@ const jsondoc = `{
 	}
 }`
 
+func TestEqualityMatch(t *testing.T) {
+	t.Run("multi equality matches", testJSQuery(`text.name:("bob", "jim", "Andy")`, true))
+	t.Run("multi equality doesn't match", testJSQuery(`text.name:("bob", "jim")`, false))
+}
+
 func TestExistsMatch(t *testing.T) {
 	t.Run("exists", testJSQuery(`text.name:exists`, true))
 	t.Run("not exists", testJSQuery(`!text.greatest_fear:exists`, true))

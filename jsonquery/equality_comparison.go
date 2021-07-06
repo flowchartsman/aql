@@ -22,23 +22,40 @@ func (e *equalityComparison) GetComparator(rValues []string) (Comparator, error)
 	// and
 	// foo:"true"
 	// When the former should be a boolean match, and the latter should be a string.
-	if len(rValues) != 1 {
-		return nil, fmt.Errorf("too many values for equality comparison. want 1, got %d", len(rValues))
+	var cs []Comparator
+	if len(rValues) < 1 {
+		return nil, fmt.Errorf("equality comparison needs more than one value")
 	}
-	if len(rValues[0]) == 0 {
-		return nil, fmt.Errorf("cannot use empty identifier for equality comparison")
+	// a little dirty to do it this way, but necessary to support `foo:("value", "value2")` in the current system
+	// TODO: after types, comparators only take a single value struct w/type type-aware ops
+	for _, rv := range rValues {
+		if len(rv) == 0 {
+			cs = append(cs, &stringEQComparator{""})
+			continue
+		}
+		if _, err := strconv.ParseFloat(rv, 64); err == nil {
+			c, err := opnumEQ.GetComparator([]string{rv})
+			if err != nil {
+				return nil, err
+			}
+			cs = append(cs, c)
+			continue
+		}
+		if _, err := dateparse.ParseAny(rv); err == nil {
+			c, err := opnumEQ.GetComparator([]string{rv})
+			if err != nil {
+				return nil, err
+			}
+			cs = append(cs, c)
+			continue
+		}
+		if b, err := strconv.ParseBool(rv); err == nil {
+			cs = append(cs, &boolEQComparator{b})
+			continue
+		}
+		cs = append(cs, &stringEQComparator{rv})
 	}
-	// this here is why we need type annotations in the parser
-	if _, err := strconv.ParseFloat(rValues[0], 64); err == nil {
-		return opnumEQ.GetComparator(rValues)
-	}
-	if _, err := dateparse.ParseAny(rValues[0]); err == nil {
-		return opnumEQ.GetComparator(rValues)
-	}
-	if b, err := strconv.ParseBool(rValues[0]); err == nil {
-		return &boolEQComparator{b}, nil
-	}
-	return &stringEQComparator{rValues[0]}, nil
+	return &multiComparator{cs}, nil
 }
 
 type boolEQComparator struct {
@@ -78,6 +95,23 @@ type regexpEQComparator struct {
 func (r *regexpEQComparator) Evaluate(lValues []string) (bool, error) {
 	for _, rs := range lValues {
 		if r.rex.MatchString(rs) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+type multiComparator struct {
+	cs []Comparator
+}
+
+func (m *multiComparator) Evaluate(lValues []string) (bool, error) {
+	for _, c := range m.cs {
+		match, err := c.Evaluate(lValues)
+		if err != nil {
+			return false, nil
+		}
+		if match {
 			return true, nil
 		}
 	}
