@@ -618,6 +618,17 @@ func TestParseQuery(t *testing.T) {
 		Left:  nil,
 		Right: nil,
 	}))
+
+	t.Run("single parenthetical", testParseQuery(`( name: "Peter" )`, &Node{
+		NodeType: NodeTerminal,
+		Comparison: Comparison{
+			Op:     "==",
+			Field:  []string{`name`},
+			Values: []string{`Peter`},
+		},
+		Left:  nil,
+		Right: nil,
+	}))
 }
 
 func testParseQuery(query string, want *Node) func(t *testing.T) {
