@@ -39,12 +39,8 @@ func (s *similarityComparison) GetComparator(rValues []string) (Comparator, erro
 		}
 		return &netSimComparator{net}, nil
 	}
-	// otherwise, check for wildcards
-	if strings.ContainsAny(cString, `*?`) {
-		return &regexpSimComparator{wildCardRegexp(cString)}, nil
-	}
-	// finding none, consider it a regular string comparator
-	return &stringEQComparator{cString}, nil
+	// otherwise, use a wildcard regexp
+	return &regexpSimComparator{wildCardRegexp(cString)}, nil
 }
 
 type regexpSimComparator struct {
@@ -84,7 +80,7 @@ func (b *boolSimComparator) Evaluate(lValues []string) (bool, error) {
 func wildCardRegexp(wcString string) *regexp.Regexp {
 	var reStr strings.Builder
 	var accum strings.Builder
-	reStr.WriteString(`(?m)^`)
+	reStr.WriteString(`(?i)`)
 	for _, c := range wcString {
 		switch c {
 		case '?', '*':
@@ -102,7 +98,6 @@ func wildCardRegexp(wcString string) *regexp.Regexp {
 		}
 	}
 	reStr.WriteString(regexp.QuoteMeta(accum.String()))
-	reStr.WriteString(`$`)
 	return regexp.MustCompile(reStr.String())
 }
 
