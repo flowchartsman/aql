@@ -22,7 +22,15 @@ func (n *numericComparison) GetComparator(rValues []string) (Comparator, error) 
 		return nil, err
 	}
 	// attempt to detect if we're being called in a time context by testing the first lvalue
-	if _, err := dateparse.ParseAny(rValues[0]); err != nil {
+	looksLikeTime := false
+	if _, err := time.Parse(time.RFC3339, rValues[0]); err == nil {
+		looksLikeTime = true
+	} else {
+		if _, err := time.Parse("2006-01-02", rValues[0]); err == nil {
+			looksLikeTime = true
+		}
+	}
+	if !looksLikeTime {
 		// doesn't look like a time, assume float context
 		floatValues, err := getFloatSlice(rValues)
 		if err != nil {
