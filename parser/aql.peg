@@ -1,6 +1,10 @@
 {
 package parser
 
+import(
+    "regexp"
+)
+
 	// helper method to exfiltrate pigeon's generated error type
 func getParseError(err error) error {
 	switch ev := err.(type) {
@@ -98,14 +102,23 @@ Comparison <- '(' space? query:OrClause space? ')'{
     } else {
         opOut = operation.(string)
     }
-    return &Node{
+    node := &Node{
         NodeType: NodeTerminal,
         Comparison:Comparison{
             Op: opOut,
             Field: field.([]string),
             Values: values.([]string),
         },
-    }, nil
+    }
+    // require comparison operator for regexp
+    if node.Comparison.Op == `==` {
+        for _, v := range node.Comparison.Values {
+            if v[0] == '/' && v[len(v)-1] == '/' {
+                return nil, fmt.Errorf("regexp comparison should use comparison operator :~%s", v)
+            }
+        }
+    }
+    return node, nil
 }
 
 /*****
@@ -181,6 +194,10 @@ RegexValue ← '/' RegexChar* '/'{
     c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
     // TODO: below is handled in jsonquery at the moment, revisit when converting stuff to types
     // return c.text = c.text[1:len(c.text)-1], nil
+    // Temporary workaround to verify that regexp values are actually valid
+    if _, err := regexp.Compile(string(c.text[1:len(c.text)-1])); err != nil {
+        return "", err
+    }
     return string(c.text), nil
 } 
 RegexChar ← !( '/' / '\\' / EOL) . / '\\' RegexEscape
