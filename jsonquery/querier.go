@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/flowchartsman/aql/parser"
@@ -137,6 +138,18 @@ func getLvals(path []string, container *gabs.Container) ([]string, error) {
 		switch vv := v.(type) {
 		case json.Number:
 			lvals = append(lvals, vv.String())
+		case int64:
+			// fix instances where regular numbers get back into the object from
+			// other sources (like a bloblang transform)
+			lvals = append(lvals, strconv.FormatInt(vv, 64))
+		case float64:
+			// same as int64 above, but using encoding/json to json-stringify
+			// it. Will be replaced "soon".
+			fs, err := json.Marshal(vv)
+			if err != nil {
+				return nil, fmt.Errorf("err converting float val to string: %v", err)
+			}
+			lvals = append(lvals, string(fs))
 		case bool:
 			if vv {
 				lvals = append(lvals, "true")
