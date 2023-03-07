@@ -141,7 +141,7 @@ func getLvals(path []string, container *gabs.Container) ([]string, error) {
 		case int64:
 			// fix instances where regular numbers get back into the object from
 			// other sources (like a bloblang transform)
-			lvals = append(lvals, strconv.FormatInt(vv, 64))
+			lvals = append(lvals, strconv.FormatInt(vv, 10))
 		case float64:
 			// same as int64 above, but using encoding/json to json-stringify
 			// it. Will be replaced "soon".
