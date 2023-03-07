@@ -1,62 +1,78 @@
 package parser
 
-//go:generate pigeon -no-recover -o parser-gen.go aql.peg
+//go:generate pigeon -o parser-gen.go aql.peg
 
 import (
 	"fmt"
+	"io"
 	"strings"
+
+	"github.com/flowchartsman/aql/internal/grammar"
+	"github.com/flowchartsman/aql/parser/ast"
 )
 
-// NodeType represents the type of a node in the parse tree
-type NodeType int
+// ParseError is a detailed parser error.
+// It's a type alias to allow exporting the internal type from the generated code.
+type ParseError = grammar.ParseError
 
-// Node Types
-const (
-	_ NodeType = iota
-	NodeNot
-	NodeAnd
-	NodeOr
-	NodeTerminal
-)
-
-// Node is a node in the query parse tree
-type Node struct {
-	NodeType   NodeType
-	Comparison Comparison
-	Left       *Node
-	Right      *Node
+type Parser struct {
+	debug       bool
+	initGoTypes bool
 }
 
-// Comparison is an individual comparision operation on a terminal node
-type Comparison struct {
-	Op     string
-	Field  []string
-	Values []string
+func (p *Parser) ParseQuery(query string) (ast.Node, error) {
+	return p.ParseQueryReader(strings.NewReader(query))
 }
 
-// ParseError is the exported error type for parsing errors with detailed information as to where they occurred
-type ParseError struct {
-	Inner    error    `json:"inner"`
-	Line     int      `json:"line"`
-	Column   int      `json:"column"`
-	Offset   int      `json:"offset"`
-	Prefix   string   `json:"prefix"`
-	Expected []string `json:"expected"`
+func (p *Parser) ParseQueryReader(r io.Reader) (ast.Node, error) {
+	v, err := grammar.ParseReader("", r, grammar.Debug(p.debug))
+	if err != nil {
+		return nil, grammar.GetParseError(err)
+	}
+	root, err := getRootNode(v)
+	if err != nil {
+		return nil, err
+	}
+	if p.initGoTypes {
+		i := newInitializer()
+		ast.Walk(i, root)
+		if i.Err() != nil {
+			return nil, i.Err()
+		}
+	}
+	opV := newopValidator()
+	ast.Walk(opV, root)
+	if opV.Err() != nil {
+		return nil, opV.Err()
+	}
+	return root, nil
 }
 
-// Error Conforms to Error
-func (p *ParseError) Error() string {
-	return p.Prefix + ": " + p.Inner.Error()
+func NewParser(opts ...Option) *Parser {
+	p := &Parser{}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
-func getRootNode(v interface{}) (*Node, error) {
-	switch t := v.(type) {
-	case nil:
-		return nil, fmt.Errorf("parser returned nil output")
-	case *Node:
-		return t, nil
-	default:
-		return nil, fmt.Errorf("parser returned unknown type: %T", t)
+type Option func(*Parser) error
+
+// Debug instructs the parser to print detailed parse information
+func Debug() Option {
+	return func(p *Parser) error {
+		p.debug = true
+		return nil
+	}
+}
+
+// InitGoTypes instructs the parser to initialize the underlying Go types for
+// all ast.Val structs, checking to ensure that they are valid. This reports,
+// for example, invalid Go regular expressions, timestamps or CIDR netblocks
+func InitGoTypes() Option {
+	return func(p *Parser) error {
+		p.initGoTypes = true
+		return nil
 	}
 }
 
@@ -78,47 +94,13 @@ func GetPrintableError(query string, err error) string {
 	return sb.String()
 }
 
-// unused, may be useful for other matches (blatently stolen from mailgun article on similar language)
-func toString(label interface{}) (string, error) {
-	var sb strings.Builder
-	value := label.([]interface{})
-	for _, i := range value {
-		if i == nil {
-			continue
-		}
-		switch b := i.(type) {
-		case []byte:
-			sb.WriteByte(b[0])
-		case string:
-			sb.WriteString(b)
-		case []interface{}:
-			s, err := toString(i)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(s)
-		default:
-			return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v", i, i)
-		}
+func getRootNode(v interface{}) (ast.Node, error) {
+	switch t := v.(type) {
+	case nil:
+		return nil, fmt.Errorf("parser returned nil output")
+	case ast.Node:
+		return t, nil
+	default:
+		return nil, fmt.Errorf("parser returned unknown type: %T", t)
 	}
-	return sb.String(), nil
-}
-
-// pigeon helper method, sometimes you gotta do what you gotta do
-func toIfaceSlice(v interface{}) []interface{} {
-	if v == nil {
-		return nil
-	}
-	return v.([]interface{})
-}
-
-// helper method to get individual tokens from their rule index
-func getTokens(first, rest interface{}, idx int) []string {
-	out := []string{first.(string)}
-	restSl := toIfaceSlice(rest)
-	for _, v := range restSl {
-		expr := toIfaceSlice(v)
-		out = append(out, expr[idx].(string))
-	}
-	return out
 }

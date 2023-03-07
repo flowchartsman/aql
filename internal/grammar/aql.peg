@@ -1,0 +1,395 @@
+{
+package grammar
+
+import(
+    "regexp"
+
+    "github.com/flowchartsman/aql/parser/ast"
+)
+
+// ParseError is the exported error type for parsing errors with detailed information as to where they occurred
+type ParseError struct {
+	Inner    error    `json:"inner"`
+	Line     int      `json:"line"`
+	Column   int      `json:"column"`
+	Offset   int      `json:"offset"`
+	Prefix   string   `json:"prefix"`
+	Expected []string `json:"expected"`
+}
+
+// Error Conforms to Error
+func (p *ParseError) Error() string {
+	return p.Prefix + ": " + p.Inner.Error()
+}
+
+// helper method to exfiltrate pigeon's generated error type
+func GetParseError(err error) error {
+	switch ev := err.(type) {
+	case errList:
+		if pe, ok := ev[0].(*parserError); ok {
+			return &ParseError{
+				Inner:    pe.Inner,
+				Line:     pe.pos.line,
+				Column:   pe.pos.col,
+				Offset:   pe.pos.offset,
+				Prefix:   pe.prefix,
+				Expected: pe.expected,
+			}
+		}
+	}
+	return err
+}
+
+// pigeon helper method, sometimes you gotta do what you gotta do
+func toIfaceSlice(v interface{}) []interface{} {
+	if v == nil {
+		return nil
+	}
+	return v.([]interface{})
+}
+
+// helper method to get individual tokens from their rule index
+func getTokens(first, rest interface{}, idx int) []string {
+	out := []string{first.(string)}
+	restSl := toIfaceSlice(rest)
+	for _, v := range restSl {
+		expr := toIfaceSlice(v)
+		out = append(out, expr[idx].(string))
+	}
+	return out
+}
+
+//helper method to get label as string value
+func toString(label interface{}) (string, error) {
+	var sb strings.Builder
+	value := label.([]interface{})
+	for _, i := range value {
+		if i == nil {
+			continue
+		}
+		switch b := i.(type) {
+		case []byte:
+			sb.WriteByte(b[0])
+		case string:
+			sb.WriteString(b)
+		case []interface{}:
+			s, err := toString(i)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(s)
+		default:
+			return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v", i, i)
+		}
+	}
+	return sb.String(), nil
+}
+// helper methods to remove legacy star syntax
+func removeStars(ss []string) []string {
+	for {
+		i := findStarIdx(ss)
+		if i < 0 {
+			break
+		}
+		ss = append(ss[:i], ss[i+1:]...)
+	}
+	return ss
+}
+
+func findStarIdx(ss []string) int {
+	for i, s := range ss {
+		if s == "*" {
+			return i
+		}
+	}
+	return -1
+}
+}
+
+/******
+*******
+GRAMMAR
+*******
+*******/
+
+Start <- query:Query EOF {
+    return query, nil
+}
+
+Query <- _ clause:OrClause _ {
+    return clause, nil
+}
+
+/****
+NODES
+*****/
+
+OrClause <- lhs:AndClause space logicalOR space rhs:OrClause {
+    return &ast.OrNode {
+        Left: lhs.(ast.Node),
+        Right: rhs.(ast.Node),
+    }, nil
+} / AndClause
+
+AndClause <- lhs:NotClause space logicalAND space rhs:AndClause {
+    return &ast.AndNode {
+        Left: lhs.(ast.Node),
+        Right: rhs.(ast.Node),
+    }, nil
+} / NotClause
+
+NotClause <- logicalNOT cmp:Comparison {
+    return &ast.NotNode {
+        Expr: cmp.(ast.Node),
+    }, nil
+} / Comparison
+
+// TODO: error clause for invalid op
+// TODO: add subdoc specifier: `foo{bar: 1 AND baz: "hello"}
+Comparison <- '(' _ query:OrClause _ ')'{
+    return query, nil
+} / field:Field _ ':' _ operation:opNoArgs {
+    return &ast.ExprNode{
+        Op: operation.(ast.Op),
+        Field: field.([]string),
+    }, nil
+} / field:Field _ '{' _ query:OrClause _ '}' {
+    return &ast.SubdocNode{
+        Field: field.([]string),
+        Expr: query.(ast.Node),
+    }, nil
+} /  field:Field _ ':' _ operation:opComp? _ values:ValueList {
+    var opOut ast.Op
+    if operation == nil {
+        opOut = ast.EQ
+    } else {
+        opOut = operation.(ast.Op)
+    }
+    node := &ast.ExprNode{
+        Op: opOut,
+        Field: field.([]string),
+        RVals: values.([]ast.Val),
+    }
+    return node, nil
+}
+
+/*****
+FIELDS
+******/
+
+//TODO add array specifier like foo.bar[*].baz[1]
+Field <- pieces:(FieldPiece ('.' FieldPiece)*) {
+    piecesSl := toIfaceSlice(pieces)
+    if len (piecesSl) == 0 {
+        return nil, fmt.Errorf("empty field")
+    }
+    // remove stars for now, they are redundant legacy syntax
+    field := []string{piecesSl[0].(string)}
+    restSl := toIfaceSlice(piecesSl[1])
+    for _, v := range restSl {
+        vSl := toIfaceSlice(v)
+        field = append(field, vSl[1].(string))
+    }
+
+    return removeStars(field), nil
+}
+
+FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star
+
+UnquotedFieldPiece <- [a-z0-9_-]i+ {
+    return string(c.text), nil
+}
+
+QuotedFieldPiece <- qv:QuotedValue {
+    return string(qv.(ast.StringVal)), nil
+}
+
+// TODO: Remove Star
+Star <- '*' {
+    return "*", nil
+}
+
+/*****
+VALUES
+******/
+
+//ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
+ValueList <- '('_ first:Value rest:( _ ',' _ Value )* _ ')' {
+    out := []ast.Val{first.(ast.Val)}
+    restSl := toIfaceSlice(rest)
+    for _, v := range restSl{
+        r := toIfaceSlice(v)
+        out = append(out, r[3].(ast.Val))
+    }
+    return out, nil
+} / value:Value {
+    return []ast.Val{value.(ast.Val)}, nil
+}
+
+Value <- val:(QuotedValue / RegexValue / BareValue) {
+    return val.(ast.Val), nil
+}
+
+/*******************
+SPECIFIC VALUE TYPES
+********************/
+
+QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* '"' {
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    s, err := strconv.Unquote(string(c.text))
+    if err != nil {
+        return nil, fmt.Errorf("invalid string: %s", err)
+    }
+    return ast.StringVal(s), nil
+}
+
+EscapedChar <- [\x00-\x1f"\\]
+
+EscapeSequence <- SingleCharEscape / UnicodeEscape
+
+SingleCharEscape <- ["\\/bfnrt]
+
+UnicodeEscape <- 'u' HexDigit HexDigit HexDigit HexDigit
+
+HexDigit <- [0-9a-f]i
+
+ValueChars <- [a-zA-Z0-9 !]
+
+//TODO: unterminated regex error
+RegexValue <- '/' RegexChar* '/'{
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    return ast.NewRegexpVal(string(c.text[1:len(c.text)-1])), nil
+} 
+RegexChar <- !( '/' / '\\' / EOL) . / '\\' RegexEscape
+RegexEscape <- !(EOL / EOF ) .
+
+//when adding BareValues, remember: longest rule first
+//TODO: error clause for invalid barevalues
+BareValue  <- Timestamp
+            / CIDRValue
+            / FloatValue
+            / IntValue
+            / BoolValue
+
+
+BoolValue <- ("false" / "true"){
+    return ast.BoolVal(string(c.text)=="true"), nil
+}
+
+FloatValue <- '-'? [0-9]+ '.' [0-9]+ {
+    f, err := strconv.ParseFloat(string(c.text), 64)
+    if err != nil {
+        return nil, fmt.Errorf("invalid float value: %s", err)
+    }
+    return ast.FloatVal(f), nil
+}
+
+IntValue <- '-'? [0-9]+ {
+    i, err := strconv.Atoi(string(c.text))
+    if err != nil {
+        return nil, fmt.Errorf("invalid float value: %s", err)
+    }
+    return ast.IntVal(i), nil
+}
+
+CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9]? {
+    return ast.NewNetVal(string(c.text)), nil
+}
+
+Octet <- [0-9][0-9]?[0-9]?
+
+/*RFC3339*/
+Timestamp <- (dateTime / fullDate) {
+    return ast.NewTimeVal(string(c.text)), nil
+}
+
+/*TODO: DO FUNCS*/
+dateTime <- fullDate ("T"i / " ") fullTime
+fullDate <- dateFullyear '-' dateMonth '-' dateMday
+
+dateFullyear <- Digit4
+dateMonth <- Digit2
+dateMday <- Digit2
+timeHour <- Digit2
+timeMinute <- Digit2
+timeSecond <- Digit2
+timeSecfrac <- '.' [0-9]+
+timeNumoffset <- ('+' / '-') timeHour ':' timeMinute
+timeOffset <- "Z"i / timeNumoffset
+partialTime <- timeHour ':' timeMinute ':' timeSecond timeSecfrac?
+fullTime <- partialTime timeOffset
+Digit4 <- [0-9][0-9][0-9][0-9]
+Digit2 <- [0-9][0-9]
+
+/****************
+LOGICAL OPERATORS
+*****************/
+
+logicalOR <- "OR"
+
+logicalAND <- "AND"
+
+logicalNOT <- "NOT" space / '!' space?
+
+/*******************
+COMPARISON OPERATORS
+********************/
+
+//TODO: invalid operation clause
+
+opNoArgs <- ("exists" / "null"){
+    var opOut ast.Op
+    switch string(c.text) {
+    case "exists":
+        opOut = ast.EXS
+    case "null":
+        opOut = ast.NUL
+    }
+    return opOut, nil
+}
+
+opComp <- ("><" / "~" / [<>] '='?){
+    var opOut ast.Op
+    switch string(c.text) {
+    case "><":
+        opOut = ast.BET
+    case "~":
+        opOut = ast.SIM
+    case "<":
+        opOut = ast.LT
+    case "<=":
+        opOut = ast.LTE
+    case ">":
+        opOut = ast.GT
+    case ">=":
+        opOut = ast.GTE
+    }
+    return opOut, nil
+}
+
+//opCOMP <- (opCustom / "><" / "~" / [<>] '='?) {
+//opCustom <- '=' opname:[a-z]i+ '='{
+//    return toString(opname)
+//}
+
+/**********************
+WHITESPACE AND TERMINAL
+***********************/
+
+_ "whitespace" <- [ \n\t\r]*
+
+space <- [ \n\t\r]+
+
+EOL <- '\n'
+
+EOF = !.
+
+/*****************************
+TERMINAL ERROR HANDLING STATES
+******************************/
+
+/*
+ErrOp <- #{
+    return fmt.Errorf("invalid operator")
+}
+*/

@@ -1,648 +1,317 @@
 package parser
 
 import (
-	"encoding/json"
-	"reflect"
+	"fmt"
 	"testing"
 )
 
 func TestParseQuery(t *testing.T) {
-	t.Run("simple minimal condition", testParseQuery(`name:"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("quoted field", testParseQuery(`"name":"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("field with leading underscore", testParseQuery(`_name:"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`_name`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("field with leading underscore qupted", testParseQuery(`"_name":"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`_name`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("field with just a number", testParseQuery(`0:"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`0`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("multi part field name", testParseQuery(`name.givenname:"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`, `givenname`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("quoted multi part field name", testParseQuery(`name."GivenName":"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`, `GivenName`},
-			Values: []string{`siegfried`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("field name with dots and quotes", testParseQuery(`"na.me"."Given\"Name":"siegfried"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`na.me`, `Given"Name`},
-			Values: []string{"siegfried"},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("simple AND clause", testParseQuery(`name:"Hans" AND surname:"Wurst"`, &Node{
-		NodeType: NodeAnd,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("simple AND clause with parenthesis", testParseQuery(`(name:"Hans" AND surname:"Wurst")`, &Node{
-		NodeType: NodeAnd,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("simple OR clause", testParseQuery(`name:"Hans" OR name:"Siegfried"`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Siegfried`},
-			},
-		},
-	}))
-
-	t.Run("simple OR clause with parenthesis", testParseQuery(`(name:"Hans" OR name:"Siegfried")`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Siegfried`},
-			},
-		},
-	}))
-
-	t.Run("simple OR clause with parenthesis around condition", testParseQuery(`name:"Hans" OR (name:"Siegfried")`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Siegfried`},
-			},
-		},
-	}))
-
-	t.Run("simple AND clause with newline", testParseQuery("name:\"Hans\"\n\tAND surname:\"Wurst\"", &Node{
-		NodeType: NodeAnd,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("simple OR clause with newline", testParseQuery("name:\"Hans\"\n\tOR surname:\"Wurst\"", &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("OR / AND clauses", testParseQuery(`name:"Hans" OR name:"Siegfried" AND age:9001`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Hans`},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeAnd,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Siegfried`},
-				},
-			},
-			Right: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`age`},
-					Values: []string{`9001`},
-				},
-			},
-		},
-	}))
-
-	t.Run("OR / AND clauses reordered", testParseQuery(`name:"Hans" AND age:9001 OR name:"Siegfried"`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeAnd,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Hans`},
-				},
-			},
-			Right: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`age`},
-					Values: []string{`9001`},
-				},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Siegfried`},
-			},
-		},
-	}))
-
-	t.Run("OR / AND clauses with paren precedence", testParseQuery(`(name:"Hans" AND age:9001) OR name:"Siegfried"`, &Node{
-		NodeType: NodeOr,
-		Left: &Node{
-			NodeType: NodeAnd,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Hans`},
-				},
-			},
-			Right: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`age`},
-					Values: []string{`9001`},
-				},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`name`},
-				Values: []string{`Siegfried`},
-			},
-		},
-	}))
-
-	t.Run("simple NOT clause", testParseQuery(`!name:"Hans" AND surname:"Wurst"`, &Node{
-		NodeType: NodeAnd,
-		Left: &Node{
-			NodeType: NodeNot,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Hans`},
-				},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("alternate simple NOT clause", testParseQuery(`NOT name:"Hans" AND surname:"Wurst"`, &Node{
-		NodeType: NodeAnd,
-		Left: &Node{
-			NodeType: NodeNot,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Hans`},
-				},
-			},
-		},
-		Right: &Node{
-			NodeType: NodeTerminal,
-			Comparison: Comparison{
-				Op:     "==",
-				Field:  []string{`surname`},
-				Values: []string{`Wurst`},
-			},
-		},
-	}))
-
-	t.Run("simple NOT clause with parenthesis", testParseQuery(`!(name:"Hans" AND surname:"Wurst")`, &Node{
-		NodeType: NodeNot,
-		Left: &Node{
-			NodeType: NodeAnd,
-			Left: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`name`},
-					Values: []string{`Hans`},
-				},
-			},
-			Right: &Node{
-				NodeType: NodeTerminal,
-				Comparison: Comparison{
-					Op:     "==",
-					Field:  []string{`surname`},
-					Values: []string{`Wurst`},
-				},
-			},
-		},
-	}))
-
-	t.Run("float value", testParseQuery(`floppy:1.4`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`floppy`},
-			Values: []string{`1.4`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("negative float value", testParseQuery(`floppy:-1.4`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`floppy`},
-			Values: []string{`-1.4`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("int value", testParseQuery(`memory:32`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`memory`},
-			Values: []string{`32`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("negative int value", testParseQuery(`memory:-32`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`memory`},
-			Values: []string{`-32`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("boolean (true) value", testParseQuery(`isAdmin:true`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`isAdmin`},
-			Values: []string{`true`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("boolean (false) value", testParseQuery(`writesGoodParsers:false`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`writesGoodParsers`},
-			Values: []string{`false`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("cidr value", testParseQuery(`internal:192.168.1.0/24`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`internal`},
-			Values: []string{`192.168.1.0/24`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("fullDate value", testParseQuery(`Andy:1979-10-03`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`Andy`},
-			Values: []string{`1979-10-03`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("dateTime value", testParseQuery(`AndyPrecise:2021-06-08T20:56:33+00:00`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`AndyPrecise`},
-			Values: []string{`2021-06-08T20:56:33+00:00`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("regexp value", testParseQuery(`domains:/.*\\.[a-z0-9]*\\.local/`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:    "==",
-			Field: []string{`domains`},
-			// TODO: Revisit when types are done to strip enclosing / (see aql.peg)
-			// Values:  []string{`.*\\.[a-z0-9]*\\.local`},
-			Values: []string{`/.*\\.[a-z0-9]*\\.local/`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator == (implicit)", testParseQuery(`answer:42`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`answer`},
-			Values: []string{`42`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator ><", testParseQuery(`whiskers:><0`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "><",
-			Field:  []string{`whiskers`},
-			Values: []string{`0`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator >", testParseQuery(`over9000:>9000`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     ">",
-			Field:  []string{`over9000`},
-			Values: []string{`9000`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator >=", testParseQuery(`almost:>=9000`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     ">=",
-			Field:  []string{`almost`},
-			Values: []string{`9000`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator <", testParseQuery(`alone:<2`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "<",
-			Field:  []string{`alone`},
-			Values: []string{`2`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("comparator <=", testParseQuery(`pair:<=2`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "<=",
-			Field:  []string{`pair`},
-			Values: []string{`2`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("allow leading whitespace", testParseQuery(` name:"Peter"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`Peter`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("allow trailing whitespace", testParseQuery(`name:"Peter" `, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`Peter`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("allow whitespace before value", testParseQuery(`name: "Peter"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`Peter`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("allow dash in field name", testParseQuery(`na-me: "Peter"`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`na-me`},
-			Values: []string{`Peter`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
-
-	t.Run("single parenthetical", testParseQuery(`( name: "Peter" )`, &Node{
-		NodeType: NodeTerminal,
-		Comparison: Comparison{
-			Op:     "==",
-			Field:  []string{`name`},
-			Values: []string{`Peter`},
-		},
-		Left:  nil,
-		Right: nil,
-	}))
+	testParse(t,
+		"simple minimal condition",
+		`name:"siegfried"`,
+		`(== name "siegfried")`)
+	testParse(t,
+		"quoted field",
+		`"name":"siegfried"`,
+		`(== name "siegfried")`)
+	testParse(t,
+		"field with leading underscore",
+		`_name:"siegfried"`,
+		`(== _name "siegfried")`)
+	testParse(t,
+		"field with leading underscore quoted",
+		`"_name":"siegfried"`,
+		`(== _name "siegfried")`)
+	testParse(t,
+		"field with just a number",
+		`0:"siegfried"`,
+		`(== 0 "siegfried")`)
+	testParse(t,
+		"multi part field name",
+		`name.givenname:"siegfried"`,
+		`(== name.givenname "siegfried")`)
+	testParse(t,
+		"quoted multi part field name",
+		`name."GivenName":"siegfried"`,
+		`(== name.GivenName "siegfried")`)
+	testParse(t,
+		"field name with dots and quotes",
+		`"na.me"."Given\"Name":"siegfried"`,
+		`(== "na.me"."Given\"Name" "siegfried")`)
+	testParse(t,
+		"simple AND clause",
+		`name:"Hans" AND surname:"Wurst"`,
+		`(&& (== name "Hans") (== surname "Wurst"))`)
+	testParse(t,
+		"simple AND clause with parenthesis",
+		`(name:"Hans" AND surname:"Wurst")`,
+		`(&& (== name "Hans") (== surname "Wurst"))`)
+	testParse(t, "simple OR clause",
+		`name:"Hans" OR name:"Siegfried"`,
+		`(|| (== name "Hans") (== name "Siegfried"))`)
+	testParse(t,
+		"simple OR clause with parenthesis",
+		`(name:"Hans" OR name:"Siegfried")`,
+		`(|| (== name "Hans") (== name "Siegfried"))`)
+	testParse(t,
+		"simple OR clause with parenthesis around condition",
+		`name:"Hans" OR (name:"Siegfried")`,
+		`(|| (== name "Hans") (== name "Siegfried"))`)
+	testParse(t,
+		"simple AND clause with newline",
+		"name:\"Hans\"\n\tAND surname:\"Wurst\"",
+		`(&& (== name "Hans") (== surname "Wurst"))`)
+	testParse(t,
+		"simple OR clause with newline",
+		"name:\"Hans\"\n\tOR surname:\"Wurst\"",
+		`(|| (== name "Hans") (== surname "Wurst"))`)
+	testParse(t,
+		"OR / AND clauses",
+		`name:"Hans" OR name:"Siegfried" AND age:9001`,
+		`(|| (== name "Hans") (&& (== name "Siegfried") (== age 9001)))`)
+	testParse(t,
+		"OR / AND with paren precedence",
+		`(name:"Hans" OR name:"Siegfried") AND age:9001`,
+		`(&& (|| (== name "Hans") (== name "Siegfried")) (== age 9001))`)
+	testParse(t,
+		"OR / AND clauses reordered",
+		`name:"Hans" AND age:9001 OR name:"Siegfried"`,
+		`(|| (&& (== name "Hans") (== age 9001)) (== name "Siegfried"))`)
+	testParse(t,
+		"In syntax",
+		`name:("Hans","Siegfried") AND age:9001`,
+		`(&& (== name ["Hans", "Siegfried"]) (== age 9001))`)
+	testParse(t, "simple NOT clause",
+		`!name:"Hans" AND surname:"Wurst"`,
+		`(&& (! (== name "Hans")) (== surname "Wurst"))`)
+	testParse(t, "alternate simple NOT clause",
+		`NOT name:"Hans" AND surname:"Wurst"`,
+		`(&& (! (== name "Hans")) (== surname "Wurst"))`)
+	testParse(t, "simple NOT clause with parenthesis",
+		`!(name:"Hans" AND surname:"Wurst")`,
+		`(! (&& (== name "Hans") (== surname "Wurst")))`)
+	testParse(t, "float value",
+		`floppy:1.4`,
+		`(== floppy 1.4)`)
+	testParse(t, "negative float value",
+		`floppy:-1.4`,
+		`(== floppy -1.4)`)
+	testParse(t, "int value",
+		`memory:32`,
+		`(== memory 32)`)
+	testParse(t, "negative int value",
+		`memory:-32`,
+		`(== memory -32)`)
+	testParse(t, "boolean (true) value",
+		`isAdmin:true`,
+		`(== isAdmin true)`)
+	testParse(t, "boolean (false) value",
+		`writesGoodParsers:false`,
+		`(== writesGoodParsers false)`)
+	testParse(t,
+		"net value",
+		`internal:192.168.1.0/24`,
+		`(== internal 192.168.1.0/24)`)
+	testParse(t,
+		"fullDate value",
+		`Andy:1979-10-03`,
+		`(== Andy 1979-10-03)`)
+	testParse(t,
+		"dateTime value",
+		`AndyPrecise:2021-06-08T20:56:33+00:00`,
+		`(== AndyPrecise 2021-06-08T20:56:33+00:00)`)
+	testParse(t,
+		"regexp value",
+		`domains:/.*\\.[a-z0-9]*\\.local/`,
+		`(== domains /.*\\.[a-z0-9]*\\.local/)`)
+	testParse(t,
+		"operator == (implicit)", `answer:42`,
+		`(== answer 42)`)
+	testParse(t,
+		"operator ><",
+		`whiskers:><(0,1)`,
+		`(>< whiskers [0, 1])`)
+	testParse(t,
+		"operator >",
+		`over9000:>9000`,
+		`(> over9000 9000)`)
+	testParse(t,
+		"operator >=",
+		`almost:>=9000`,
+		`(>= almost 9000)`)
+	testParse(t,
+		"operator <",
+		`alone:<2`,
+		`(< alone 2)`)
+	testParse(t,
+		"operator <=",
+		`pair:<=2`,
+		`(<= pair 2)`)
+	testParse(t,
+		"operator exists",
+		`pair:exists`,
+		`(exists pair)`)
+	testParse(t,
+		"operator null",
+		`pair:null`,
+		`(null pair)`)
+	testParse(t,
+		"allow leading whitespace",
+		` name:"Peter"`,
+		`(== name "Peter")`)
+	testParse(t,
+		"allow trailing whitespace",
+		`name:"Peter" `,
+		`(== name "Peter")`)
+	testParse(t,
+		"allow whitespace",
+		`name: ~ ( "Peter" , "Bob" )`,
+		`(~ name ["Peter", "Bob"])`)
+	testParse(t,
+		"allow dash in field name",
+		`na-me: "Peter"`,
+		`(== na-me "Peter")`)
+	testParse(t,
+		"single parenthetical",
+		`( name: "Peter" )`,
+		`(== name "Peter")`)
+	testParse(t,
+		"mix of regular and  no-arg ops",
+		`a:<1 AND b:exists AND c:<=2 AND d:null AND e:"hello"`,
+		`(&& (< a 1) (&& (exists b) (&& (<= c 2) (&& (null d) (== e "hello")))))`)
+	testParse(t,
+		"subdoc node",
+		`foo."ba r"{a:<1 AND b:"hello"}`,
+		`(foo."ba r"{(&& (< a 1) (== b "hello"))})`)
 }
 
-func testParseQuery(query string, want *Node) func(t *testing.T) {
-	return func(t *testing.T) {
-		t.Helper()
-		t.Parallel()
-		n, err := ParseQuery(query)
+func testParse(t *testing.T, testName string, query string, want string) {
+	t.Helper()
+	t.Run(testName, func(tt *testing.T) {
+		tt.Helper()
+		p := NewParser()
+		n, err := p.ParseQuery(query)
 		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+			tt.Fatalf("unexpected error: %v", err)
 		}
-		if !reflect.DeepEqual(want, n) {
-			wb, _ := json.MarshalIndent(want, "", " ")
-			nb, _ := json.MarshalIndent(n, "", " ")
-			t.Fatalf("expected:\n%s\ngot:\n%s", string(wb), string(nb))
+		ns := n.String()
+		if ns != want {
+			tt.Fatalf("\nexpected:\n%s\ngot:\n%s", want, ns)
 		}
-	}
+	})
 }
+
+func TestValueErrors(t *testing.T) {
+	testParseErr(t,
+		`invalid regexp fails`,
+		`name:/*/`,
+		"value error for expression [name: /*/]: invalid regular expression: error parsing regexp: missing argument to repetition operator: `*`")
+	testParseErr(t,
+		`valid regexp`,
+		`name:/.*/`,
+		``)
+	testParseErr(t,
+		`invalid net addr fails`,
+		`net:500.500.500.500/32`,
+		`value error for expression [net: 500.500.500.500/32]: invalid net value: invalid CIDR address: 500.500.500.500/32`)
+	testParseErr(t,
+		`invalid net block fails`,
+		`net:192.168.0.0/99`,
+		`value error for expression [net: 192.168.0.0/99]: invalid net value: invalid CIDR address: 192.168.0.0/99`)
+	testParseErr(t,
+		`valid net block`,
+		`net:192.168.0.0/24`,
+		``)
+	testParseErr(t,
+		`invalid short date month fails`,
+		`Andy:1979-13-03`,
+		`value error for expression [Andy: 1979-13-03]: invalid date value: parsing time "1979-13-03": month out of range`)
+	testParseErr(t,
+		`invalid short date day fails`,
+		`Joe:1979-02-31`,
+		`value error for expression [Joe: 1979-02-31]: invalid date value: parsing time "1979-02-31": day out of range`)
+	testParseErr(t,
+		`valid short date`,
+		`Andy:1979-10-03`,
+		``)
+	testParseErr(t,
+		`invalid short date month fails`,
+		`Andy:1979-13-03`,
+		`value error for expression [Andy: 1979-13-03]: invalid date value: parsing time "1979-13-03": month out of range`)
+	testParseErr(t,
+		`invalid long date time fails`,
+		`AndyPrecise:2021-06-08T20:74:33+00:00`,
+		`value error for expression [AndyPrecise: 2021-06-08T20:74:33+00:00]: invalid date value: parsing time "2021-06-08T20:74:33+00:00": extra text: "T20:74:33+00:00"`)
+	testParseErr(t,
+		`valid long date`,
+		`AndyPrecise:2021-06-08T20:53:33+00:00`,
+		``)
+	testParseErr(t,
+		`invalid value in list fails`,
+		`name:(/.*/,/*/)`,
+		"value error for expression [name: (/.*/,/*/)] value (2/2): invalid regular expression: error parsing regexp: missing argument to repetition operator: `*`")
+}
+
+func TestOpErrors(t *testing.T) {
+	testParseErr(t,
+		`duplicates not allowed`,
+		`value: (1,2,1)`,
+		`expression [value: (1,2,1)] operation error (value 3/3): operation == duplicate argument found`)
+	testParseErr(t,
+		`between operator invalid arity 1`,
+		`value:>< 1`,
+		`expression [value:>< 1] operation error: operation >< requires exactly 2 arguments`)
+	testParseErr(t,
+		`between operator invalid arity >2`,
+		`value:>< (1,2,3)`,
+		`expression [value:>< (1,2,3)] operation error: operation >< requires exactly 2 arguments`)
+	testParseErr(t,
+		`between operator needs two numeric values`,
+		`value:>< (1, "hello")`,
+		`expression [value:>< (1,"hello")] operation error (value 2/2): operation >< requires numeric arguments, found string`)
+	testParseErr(t,
+		`between operator requires second value to be greater`,
+		`value:>< (2, 1)`,
+		`expression [value:>< (2,1)] operation error (value 2/2): operation >< requires the second value to be greater`)
+	// ensure numeric requirements
+	for _, op := range []string{`<`, `<=`, `>`, `>=`, `><`} {
+		query := fmt.Sprintf(`value:%s "hello"`, op)
+		expectedErr := fmt.Sprintf(`expression [value:%[1]s "hello"] operation error: operation %[1]s requires numeric arguments, found string`, op)
+		testName := fmt.Sprintf(`operation %s requires numeric value(s)`, op)
+		testParseErr(t,
+			testName,
+			query,
+			expectedErr,
+		)
+	}
+	testParseErr(t,
+		`similarity operator needs string values`,
+		`value:~ 2`,
+		`expression [value:~ 2] operation error: operation ~ requires string arguments, found integer`)
+}
+
+func testParseErr(t *testing.T, testName string, query string, wantErr string) {
+	t.Helper()
+	t.Run(testName, func(t *testing.T) {
+		t.Helper()
+		p := NewParser(InitGoTypes())
+		_, err := p.ParseQuery(query)
+		if err != nil {
+			if wantErr == "" {
+				t.Fatalf("\nunexpected error:\n%s", err)
+			}
+			if err.Error() != wantErr {
+				t.Fatalf("\nexpected:\n%s\ngot:\n%s", wantErr, err)
+			}
+		} else {
+			if wantErr != "" {
+				t.Fatalf("\nexpected:\n%s\ngot:\n(no error)", wantErr)
+			}
+		}
+	})
+}
+
+// TODO: full coverage tests
+// func TestCoverage(t *testing.T){/**/}
+
+// testPanic(t *testing.T, expectedPanicMsg string, do func()){/**/}
