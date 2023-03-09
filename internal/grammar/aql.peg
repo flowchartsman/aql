@@ -145,7 +145,6 @@ NotClause <- logicalNOT cmp:Comparison {
 } / Comparison
 
 // TODO: error clause for invalid op
-// TODO: add subdoc specifier: `foo{bar: 1 AND baz: "hello"}
 Comparison <- '(' _ query:OrClause _ ')'{
     return query, nil
 } / field:Field _ ':' _ operation:opNoArgs {
@@ -234,14 +233,16 @@ Value <- val:(QuotedValue / RegexValue / BareValue) {
 SPECIFIC VALUE TYPES
 ********************/
 
-QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* '"' {
+QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* EndingQuote {
     c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
     s, err := strconv.Unquote(string(c.text))
     if err != nil {
         return nil, fmt.Errorf("invalid string: %s", err)
     }
     return ast.StringVal(s), nil
-}
+} //{errUntermStr} ErrUntermStr
+
+EndingQuote <- '"' / %{errUntermStr}
 
 EscapedChar <- [\x00-\x1f"\\]
 
@@ -255,13 +256,14 @@ HexDigit <- [0-9a-f]i
 
 ValueChars <- [a-zA-Z0-9 !]
 
-//TODO: unterminated regex error
-RegexValue <- '/' RegexChar* '/'{
+RegexValue <- '/' RegexChar* EndingSlash {
     c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
     return ast.NewRegexpVal(string(c.text[1:len(c.text)-1])), nil
-} 
+} //{errUntermRegex} ErrUntermRegex
 RegexChar <- !( '/' / '\\' / EOL) . / '\\' RegexEscape
 RegexEscape <- !(EOL / EOF ) .
+
+EndingSlash <- '/' / %{errUntermRegex}
 
 //when adding BareValues, remember: longest rule first
 //TODO: error clause for invalid barevalues
@@ -387,6 +389,14 @@ EOF = !.
 /*****************************
 TERMINAL ERROR HANDLING STATES
 ******************************/
+
+ErrUntermStr <- #{
+    return errors.New("unterminated string value, did you forget a closing '\"'?")
+}
+
+ErrUntermRegex <- #{
+    return errors.New("unterminated regular expression, did you forget a closing '/'?")
+}
 
 /*
 ErrOp <- #{
