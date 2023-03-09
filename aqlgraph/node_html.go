@@ -3,10 +3,11 @@ package aqlgraph
 import "text/template"
 
 const (
-	colorAnd  = `#f59722`
-	colorOr   = `#f4e452`
-	colorNot  = `#ba4932`
-	colorExpr = `#00507c`
+	colorAnd = `#f59722`
+	colorOr  = `#f4e452`
+	colorNot = `#ba4932`
+	// colorExpr = `#00507c`
+	colorExpr = `#427baa`
 	colorSub  = `#000000`
 
 	colorFloat  = `#24b581`
@@ -19,20 +20,20 @@ const (
 )
 
 type htmlNode struct {
+	Field  string
 	Props  []NodeProp
 	Values []NodeVal
-	Left   string
-	Right  string
 }
 
 type NodeProp struct {
-	Name   string
-	Values []NodeVal
+	Name  string
+	Value string
 }
 
 type NodeVal struct {
-	Val   string
-	Color string
+	ValStr  string
+	ValType string
+	Color   string
 }
 
 var labelTmpl = template.Must(template.New("").Parse(`<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="2">
@@ -42,25 +43,19 @@ var labelTmpl = template.Must(template.New("").Parse(`<TABLE BORDER="0" CELLBORD
 {{- range .Props}}
 <TR>
 	<TD CELLPADDING="0" BORDER="1">{{ .Name |html }}</TD>
-	<TD CELLPADDING="0" BORDER="0">
-		<TABLE BORDER="0" CELLPADDING="2" CELLSPACING="0">
-{{- range .Values}}
-			<TR>
-				<TD BORDER="1"><FONT FACE="monospace">{{ . |html }}</FONT></TD>
-			</TR>
+	<TD CELLPADDING="0" BORDER="1">{{ .Value|html }}</TD>
+</TR>
 {{- end }}
-		</TABLE>
-	</TD>
-</TR>
-{{end}}
-{{- if .Values}}
+{{- if .Values }}
 <TR>
-<TD COLSPAN="2">Values</TD>
+	<TD COLSPAN="2">Values</TD>
 </TR>
 {{- range .Values}}
 <TR>
-<TD COLSPAN="2" BGCOLOR="{{ . Color }}>{{ .Val | html}}</TD>
+	<TD BORDER="1" BGCOLOR="{{ .Color }}"><I>{{ .ValType }}</I></TD>
+	<TD BORDER="1">{{ .ValStr }}</TD>
 </TR>
-{{- end}}
-{{- end}}
-</TABLE>`))
+{{- end }}
+{{- end }}
+</TABLE>
+`))
