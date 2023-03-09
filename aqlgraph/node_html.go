@@ -53,7 +53,7 @@ var labelTmpl = template.Must(template.New("").Parse(`<TABLE BORDER="0" CELLBORD
 {{- range .Values}}
 <TR>
 	<TD BORDER="1" BGCOLOR="{{ .Color }}"><I>{{ .ValType }}</I></TD>
-	<TD BORDER="1">{{ .ValStr }}</TD>
+	<TD BORDER="1" BGCOLOR="#FFFFFF">{{ .ValStr }}</TD>
 </TR>
 {{- end }}
 {{- end }}
