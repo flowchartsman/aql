@@ -25,7 +25,14 @@ func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
 }
 
 func (m *Matcher) Match(json []byte) (bool, error) {
-	doc, err := fastjson.ParseBytes(json)
+	// An unfortunate necessity for now, until something like
+	// https://github.com/valyala/fastjson/pull/68 can land.
+	if err := fastjson.ValidateBytes(json); err != nil {
+		return false, err
+	}
+	parser := m.ppool.Get()
+	defer m.ppool.Put(parser)
+	doc, err := parser.ParseBytes(json)
 	if err != nil {
 		return false, err
 	}
