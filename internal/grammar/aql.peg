@@ -41,28 +41,28 @@ func GetParseError(err error) error {
 }
 
 // pigeon helper method, sometimes you gotta do what you gotta do
-func toIfaceSlice(v interface{}) []interface{} {
+func toAny(v any) []any {
 	if v == nil {
 		return nil
 	}
-	return v.([]interface{})
+	return v.([]any)
 }
 
 // helper method to get individual tokens from their rule index
-func getTokens(first, rest interface{}, idx int) []string {
+func getTokens(first, rest any, idx int) []string {
 	out := []string{first.(string)}
-	restSl := toIfaceSlice(rest)
+	restSl := toAny(rest)
 	for _, v := range restSl {
-		expr := toIfaceSlice(v)
+		expr := toAny(v)
 		out = append(out, expr[idx].(string))
 	}
 	return out
 }
 
 //helper method to get label as string value
-func toString(label interface{}) (string, error) {
+func toString(label any) (string, error) {
 	var sb strings.Builder
-	value := label.([]interface{})
+	value := label.([]any)
 	for _, i := range value {
 		if i == nil {
 			continue
@@ -72,7 +72,7 @@ func toString(label interface{}) (string, error) {
 			sb.WriteByte(b[0])
 		case string:
 			sb.WriteString(b)
-		case []interface{}:
+		case []any:
 			s, err := toString(i)
 			if err != nil {
 				return "", err
@@ -178,15 +178,15 @@ FIELDS
 
 //TODO add array specifier like foo.bar[*].baz[1]
 Field <- pieces:(FieldPiece ('.' FieldPiece)*) {
-    piecesSl := toIfaceSlice(pieces)
+    piecesSl := toAny(pieces)
     if len (piecesSl) == 0 {
         return nil, fmt.Errorf("empty field")
     }
     // remove stars for now, they are redundant legacy syntax
     field := []string{piecesSl[0].(string)}
-    restSl := toIfaceSlice(piecesSl[1])
+    restSl := toAny(piecesSl[1])
     for _, v := range restSl {
-        vSl := toIfaceSlice(v)
+        vSl := toAny(v)
         field = append(field, vSl[1].(string))
     }
 
@@ -215,9 +215,9 @@ VALUES
 //ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
 ValueList <- '('_ first:Value rest:( _ ',' _ Value )* _ ')' {
     out := []ast.Val{first.(ast.Val)}
-    restSl := toIfaceSlice(rest)
+    restSl := toAny(rest)
     for _, v := range restSl{
-        r := toIfaceSlice(v)
+        r := toAny(v)
         out = append(out, r[3].(ast.Val))
     }
     return out, nil
