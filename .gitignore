@@ -11,4 +11,5 @@ cmd/aqltest/aqltest
 cmd/aqltest/*.json
 **/.DS_Store
 cmd/aqlgraph/query_graph.svg
-wasm/aqlparse/aqlparse.wasm
+**/*.wasm
+**/*.wasm.gz
