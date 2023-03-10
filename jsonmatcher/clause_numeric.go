@@ -12,35 +12,35 @@ type numericClause struct {
 	op    ast.Op
 }
 
-func (s *numericClause) matches(values []*fastjson.Value) bool {
+func (n *numericClause) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
 		fv, ok := getNumberVal(v)
 		if !ok {
 			continue
 		}
-		switch s.op {
+		switch n.op {
 		case ast.EQ:
-			if fv == s.value {
+			if fv == n.value {
 				return true
 			}
 		case ast.LT:
-			if fv < s.value {
+			if fv < n.value {
 				return true
 			}
 		case ast.LTE:
-			if fv <= s.value {
+			if fv <= n.value {
 				return true
 			}
 		case ast.GT:
-			if fv > s.value {
+			if fv > n.value {
 				return true
 			}
 		case ast.GTE:
-			if fv >= s.value {
+			if fv >= n.value {
 				return true
 			}
 		default:
-			panic(fmt.Sprintf("invalid op for numeric comparison: %s", s.op))
+			panic(fmt.Sprintf("invalid op for numeric comparison: %s", n.op))
 		}
 	}
 	return false
