@@ -3,6 +3,7 @@ package jsonmatcher
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/valyala/fastjson"
 )
@@ -31,7 +32,7 @@ func getValues(path []string, parents ...*fastjson.Value) []*fastjson.Value {
 	return testVals
 }
 
-func getValString(v *fastjson.Value) (stringVal string, isStringy bool) {
+func getStringVal(v *fastjson.Value) (stringVal string, isStringy bool) {
 	switch v.Type() {
 	case fastjson.TypeString:
 		return string(v.GetStringBytes()), true
@@ -45,7 +46,7 @@ func getValString(v *fastjson.Value) (stringVal string, isStringy bool) {
 	return "", false
 }
 
-func getValNumeric(v *fastjson.Value) (floatVal float64, isNumeric bool) {
+func getNumberVal(v *fastjson.Value) (floatVal float64, isNumeric bool) {
 	switch v.Type() {
 	case fastjson.TypeString:
 		strVal := string(v.GetStringBytes())
@@ -58,4 +59,48 @@ func getValNumeric(v *fastjson.Value) (floatVal float64, isNumeric bool) {
 		return v.GetFloat64(), true
 	}
 	return math.NaN(), false
+}
+
+func getBoolVal(v *fastjson.Value) (boolVal bool, found bool) {
+	switch v.Type() {
+	case fastjson.TypeFalse:
+		return false, true
+	case fastjson.TypeTrue:
+		return true, true
+	}
+	return false, false
+}
+
+// true:
+//   - <boolean> true
+//   - <numeric> != 0
+//   - <string> != ["", "false", "0"]
+//
+// false:
+//   - boolean false
+//   - <numeric> == 0
+//   - <string> == ["", "false", "0"]
+//   - null
+func getTruthyVal(v *fastjson.Value) (boolVal bool, found bool) {
+	switch v.Type() {
+	case fastjson.TypeString:
+		sv := string(v.GetStringBytes())
+		switch len(sv) {
+		case 0:
+			return false, true
+		case 1:
+			return sv != "0", true
+		case 5:
+			return strings.ToLower(sv) != "false", true
+		}
+	case fastjson.TypeFalse:
+		return false, true
+	case fastjson.TypeTrue:
+		return true, true
+	case fastjson.TypeNull:
+		return false, true
+	case fastjson.TypeNumber:
+		return v.GetFloat64() != 0, true
+	}
+	return false, false
 }

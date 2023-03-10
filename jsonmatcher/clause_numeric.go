@@ -14,7 +14,7 @@ type numericClause struct {
 
 func (s *numericClause) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
-		fv, ok := getValNumeric(v)
+		fv, ok := getNumberVal(v)
 		if !ok {
 			continue
 		}

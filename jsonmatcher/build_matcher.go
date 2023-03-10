@@ -86,10 +86,20 @@ func (b *builder) build(node ast.Node) matcherNode {
 		clauses := make([]clause, 0, len(n.RVals))
 		for _, r := range n.RVals {
 			switch rval := r.(type) {
+			// case ast.ExactStringVal:
+			// EQ is exact match only, so stringclause
+			// SIM is case-sensitive wordregexp
 			case ast.StringVal:
-				clauses = append(clauses, &stringClause{
-					value: rval.Value(),
-				})
+				switch n.Op {
+				case ast.EQ:
+					clauses = append(clauses, &regexpClause{
+						value: wordRegexp(rval.Value()),
+					})
+				case ast.SIM:
+					clauses = append(clauses, &regexpClause{
+						value: wildcardRegexp(rval.Value()),
+					})
+				}
 			case ast.FloatVal:
 				clauses = append(clauses, &numericClause{
 					value: rval.Value(),
@@ -98,6 +108,11 @@ func (b *builder) build(node ast.Node) matcherNode {
 			case ast.IntVal:
 				clauses = append(clauses, &numericClause{
 					value: float64(rval.Value()),
+					op:    n.Op,
+				})
+			case ast.BoolVal:
+				clauses = append(clauses, &boolClause{
+					value: bool(rval.Value()),
 					op:    n.Op,
 				})
 			}

@@ -1,6 +1,8 @@
 package jsonmatcher
 
-import "github.com/valyala/fastjson"
+import (
+	"github.com/valyala/fastjson"
+)
 
 type stringClause struct {
 	value string
@@ -8,7 +10,7 @@ type stringClause struct {
 
 func (s *stringClause) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
-		str, ok := getValString(v)
+		str, ok := getStringVal(v)
 		if !ok {
 			continue
 		}

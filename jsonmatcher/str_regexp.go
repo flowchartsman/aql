@@ -3,9 +3,11 @@ package jsonmatcher
 import (
 	"bytes"
 	"regexp"
+	"strings"
 )
 
 func wildcardRegexp(wcString string) *regexp.Regexp {
+	wcString = strings.ToLower(wcString)
 	wcRunes := []rune(wcString)
 	var buf bytes.Buffer
 	buf.WriteString(`(?i)`)
@@ -36,4 +38,8 @@ func wildcardRegexp(wcString string) *regexp.Regexp {
 	}
 	buf.WriteString(regexp.QuoteMeta(accum.String()))
 	return regexp.MustCompile(buf.String())
+}
+
+func wordRegexp(str string) *regexp.Regexp {
+	return regexp.MustCompile(`(?i)\b` + strings.ToLower(str) + `\b`)
 }

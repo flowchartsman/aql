@@ -12,7 +12,7 @@ type regexpClause struct {
 
 func (r *regexpClause) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
-		str, ok := getValString(v)
+		str, ok := getStringVal(v)
 		if !ok {
 			continue
 		}
