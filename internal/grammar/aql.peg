@@ -227,6 +227,8 @@ ValueList <- '('_ first:Value rest:( _ ',' _ Value )* _ ')' {
 
 Value <- val:(QuotedValue / RegexValue / BareValue) {
     return val.(ast.Val), nil
+} / [^ \n\t\r]+ {
+    return nil, fmt.Errorf("Unknown type of value [%s] -- did you mean %q?", c.text, c.text)
 }
 
 /*******************
