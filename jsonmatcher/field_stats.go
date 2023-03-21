@@ -56,6 +56,7 @@ var encounteredName = [numEncounteredTypes]string{
 	"null (in array)",
 }
 
+// TODO: Replace uber types with native types pending MarshalScalar (see field_stats.go)
 type FieldStats struct {
 	Expecting       []expectedType                        `json:"expecting"`
 	TimesSampled    atomic.Int64                          `json:"times_sampled"`
