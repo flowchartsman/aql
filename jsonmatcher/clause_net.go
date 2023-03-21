@@ -28,23 +28,29 @@ func (n *netClause) matches(values []*fastjson.Value) bool {
 				pfx, err := netip.ParsePrefix(sv)
 				if err != nil {
 					// report incorrect field
-					return false
+					continue
 				}
-				return n.value.Overlaps(pfx)
+				if n.value.Overlaps(pfx) {
+					return true
+				}
 			case strings.Contains(sv, `:`):
 				// addr w/ port
 				addrport, err := netip.ParseAddrPort(sv)
 				if err != nil {
-					return false
+					continue
 				}
-				return n.value.Contains(addrport.Addr())
+				if n.value.Contains(addrport.Addr()) {
+					return true
+				}
 			default:
 				// plain addr
 				addr, err := netip.ParseAddr(sv)
 				if err != nil {
-					return false
+					continue
 				}
-				return n.value.Contains(addr)
+				if n.value.Contains(addr) {
+					return true
+				}
 			}
 		default:
 			panic(fmt.Sprintf("invalid op for net value comparison: %s", n.op))
