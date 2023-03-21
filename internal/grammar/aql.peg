@@ -270,7 +270,7 @@ EndingSlash <- '/' / %{errUntermRegex}
 //when adding BareValues, remember: longest rule first
 //TODO: error clause for invalid barevalues
 BareValue  <- Timestamp
-            / CIDRValue
+            / IPValue
             / FloatValue
             / IntValue
             / BoolValue
@@ -296,11 +296,14 @@ IntValue <- '-'? [0-9]+ {
     return ast.IntVal(i), nil
 }
 
-CIDRValue <- Octet '.' Octet '.' Octet '.' Octet '/' [0-9][0-9]? {
+
+IPValue <- Octet '.' Octet '.' Octet '.' Octet CIDRBlock? {
     return ast.NewNetVal(string(c.text)), nil
 }
 
 Octet <- [0-9][0-9]?[0-9]?
+
+CIDRBlock <- '/' [0-9][0-9]?
 
 /*RFC3339*/
 Timestamp <- (dateTime / fullDate) {
