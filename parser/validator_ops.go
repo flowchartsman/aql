@@ -27,7 +27,7 @@ func (o *opValidator) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case *ast.ExprNode:
 		checker := newopChecker(n)
-		// global operation checks here
+		// global operation checks
 		checker.check(noDuplicates())
 		// ensure types are correct
 		switch n.Op {
@@ -36,6 +36,7 @@ func (o *opValidator) Visit(node ast.Node) ast.Visitor {
 		case ast.SIM:
 			checker.check(allStringVals())
 		}
+		// ensure only one netblock in individual comparison.
 		// check between arity and ordering
 		if n.Op == ast.BET {
 			checker.check(
@@ -109,9 +110,7 @@ func betweenOrdering() opCheck {
 		if len(node.RVals) != 2 {
 			panic("somehow between op with invalid arity slipped through")
 		}
-		var (
-			l, r float64
-		)
+		var l, r float64
 		switch lnv := node.RVals[0].(type) {
 		case ast.IntVal:
 			l = float64(lnv.Value())
@@ -150,7 +149,11 @@ func allStringVals() opCheck {
 	return func(node *ast.ExprNode) (string, int) {
 		badArg := -1
 		for i, rv := range node.RVals {
-			if !valString(rv) {
+			switch rv.(type) {
+			case ast.StringVal, *ast.RegexpVal:
+				// okay
+				// TODO: remove temporary regexp allowance
+			default:
 				if len(node.RVals) > 1 {
 					badArg = i
 				}

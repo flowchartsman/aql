@@ -13,6 +13,7 @@ type Matcher struct {
 }
 
 func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
+	// todo: warnings
 	p := parser.NewParser(parser.InitGoTypes())
 	root, err := p.ParseQuery(aqlQuery)
 	if err != nil {

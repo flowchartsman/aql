@@ -2,7 +2,7 @@ package ast
 
 import (
 	"fmt"
-	"net"
+	"net/netip"
 	"regexp"
 	"strconv"
 	"strings"
@@ -119,9 +119,11 @@ type IntVal int
 func (i IntVal) ValStr() string {
 	return fmt.Sprint(i)
 }
+
 func (i IntVal) Value() int {
 	return int(i)
 }
+
 func (i IntVal) FriendlyType() string {
 	return "integer"
 }
@@ -135,6 +137,7 @@ func (f FloatVal) ValStr() string {
 func (f FloatVal) Value() float64 {
 	return float64(f)
 }
+
 func (f FloatVal) FriendlyType() string {
 	return "float"
 }
@@ -148,6 +151,7 @@ func (s StringVal) ValStr() string {
 func (s StringVal) Value() string {
 	return string(s)
 }
+
 func (s StringVal) FriendlyType() string {
 	return "string"
 }
@@ -161,6 +165,7 @@ func (b BoolVal) ValStr() string {
 func (b BoolVal) Value() bool {
 	return bool(b)
 }
+
 func (b BoolVal) FriendlyType() string {
 	return "boolean"
 }
@@ -183,6 +188,8 @@ func (r *RegexpVal) FriendlyType() string {
 }
 
 func (r *RegexpVal) Value() (*regexp.Regexp, error) {
+	// TODO: awkward to check error for every regexp access.
+	// Just make sure it compiles once and be done with it.
 	if r.rv == nil {
 		rv, err := regexp.Compile(r.sv)
 		if err != nil {
@@ -195,7 +202,7 @@ func (r *RegexpVal) Value() (*regexp.Regexp, error) {
 
 type NetVal struct {
 	sv string
-	nv *net.IPNet
+	nv netip.Prefix
 }
 
 func NewNetVal(str string) *NetVal {
@@ -207,14 +214,18 @@ func (n *NetVal) ValStr() string {
 }
 
 func (n *NetVal) FriendlyType() string {
-	return "net block"
+	return "net address"
 }
 
-func (n *NetVal) Value() (*net.IPNet, error) {
-	if n.nv == nil {
-		_, nv, err := net.ParseCIDR(n.sv)
+func (n *NetVal) Value() (netip.Prefix, error) {
+	if !n.nv.IsValid() {
+		sv := n.sv
+		if !strings.Contains(sv, `/`) {
+			sv += "/32"
+		}
+		nv, err := netip.ParsePrefix(sv)
 		if err != nil {
-			return nil, err
+			return netip.Prefix{}, err
 		}
 		n.nv = nv
 	}

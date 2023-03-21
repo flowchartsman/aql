@@ -9,13 +9,17 @@ require (
 	go.uber.org/atomic v1.9.0
 )
 
+require golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
+
 require (
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/image v0.6.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.8.0
 	golang.org/x/tools v0.6.0 // indirect
 )

@@ -13,6 +13,7 @@ type Visitor interface {
 // w for each of the non-nil children of node, followed by a call of
 // w.Visit(nil).
 //
+// TODO, allow visitor injection to avoid walking the tree multiple times.
 func Walk(v Visitor, node Node) {
 	if v = v.Visit(node); v == nil {
 		return

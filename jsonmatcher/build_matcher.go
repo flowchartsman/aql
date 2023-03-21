@@ -8,9 +8,9 @@ type builder struct {
 	withStats bool
 	// track all expression node fields for returning detailed stats on what the
 	// query is encountering in the field
-	fieldsExpect *expectedTypeSet
+	// integrate node_stats
 	// tracks current subdoc prefix so they can be nested
-	subdocPrefix []string
+	// subdocPrefix []string
 }
 
 func newBuilder(withStats bool) *builder {
@@ -18,7 +18,7 @@ func newBuilder(withStats bool) *builder {
 		withStats: withStats,
 	}
 	if withStats {
-		b.fieldsExpect = newExpectedTypeSet()
+		// integrate field_stats
 	}
 	return b
 }
@@ -61,19 +61,19 @@ func (b *builder) build(node ast.Node) matcherNode {
 			}
 		}
 		return node
-	case *ast.SubdocNode:
-		b.subdocPrefix = append(b.subdocPrefix, n.Field...)
-		node := &subdocNode{
-			prefix: b.subdocPrefix,
-			sub:    b.build(n.Expr),
-		}
-		if b.withStats {
-			node.nodeStats = &nodeStats{
-				nodeName: ast.FieldString(n.Field) + "{}",
-			}
-		}
-		b.subdocPrefix = b.subdocPrefix[:len(b.subdocPrefix)-len(n.Field)]
-		return node
+	// case *ast.SubdocNode:
+	// 	b.subdocPrefix = append(b.subdocPrefix, n.Field...)
+	// 	node := &subdocNode{
+	// 		prefix: b.subdocPrefix,
+	// 		sub:    b.build(n.Expr),
+	// 	}
+	// 	if b.withStats {
+	// 		node.nodeStats = &nodeStats{
+	// 			nodeName: ast.FieldString(n.Field) + "{}",
+	// 		}
+	// 	}
+	// 	b.subdocPrefix = b.subdocPrefix[:len(b.subdocPrefix)-len(n.Field)]
+	// 	return node
 	case *ast.ExprNode:
 		node := &exprNode{
 			path: n.Field,
@@ -83,21 +83,40 @@ func (b *builder) build(node ast.Node) matcherNode {
 				nodeName: n.FriendlyString(),
 			}
 		}
+		// TODO: several optimizations possible here, including multi-term
+		// string matchers, which can be unified into a singular regular
+		// expression.
+		// combinedRvals := CoalesceRvals(n.RVals)
+		// for vtype, RVals := range combinedRvals
 		clauses := make([]clause, 0, len(n.RVals))
 		for _, r := range n.RVals {
 			switch rval := r.(type) {
-			// case ast.ExactStringVal:
-			// EQ is exact match only, so stringclause
-			// SIM is case-sensitive wordregexp
 			case ast.StringVal:
+				str := rval.Value()
+				// switch n.Op {
+				// case ast.EQ:
+				// 	clauses = append(clauses, &regexpClause{
+				// 		value: stringSearchRegexp(str),
+				// 	})
+				// case ast.SIM:
+				// 	clauses = append(clauses, &fuzzyClause{
+
+				// 	})
+				// }
+				clauses = append(clauses, &regexpClause{
+					value: stringSearchRegexp(str),
+				})
+			case *ast.RegexpVal:
 				switch n.Op {
-				case ast.EQ:
+				// TODO: remove SIM, eventually
+				case ast.EQ, ast.SIM:
+					// don't need to check for error here, since regular
+					// expression will be initialized
+					// TODO: remove error check entirely in favor of error
+					// thrown from InitGoTypes
+					rex, _ := rval.Value()
 					clauses = append(clauses, &regexpClause{
-						value: wordRegexp(rval.Value()),
-					})
-				case ast.SIM:
-					clauses = append(clauses, &regexpClause{
-						value: wildcardRegexp(rval.Value()),
+						value: rex,
 					})
 				}
 			case ast.FloatVal:
@@ -115,41 +134,24 @@ func (b *builder) build(node ast.Node) matcherNode {
 					value: bool(rval.Value()),
 					op:    n.Op,
 				})
+			case *ast.TimeVal:
+				tval, _ := rval.Value()
+				clauses = append(clauses, &datetimeClause{
+					value: tval,
+					op:    n.Op,
+				})
+			case *ast.NetVal:
+				nval, _ := rval.Value()
+				clauses = append(clauses, &netClause{
+					value: nval,
+					op:    n.Op,
+				})
+			default:
+				// invalid
 			}
 		}
 		node.clauses = clauses
 		matcher = node
 	}
 	return matcher
-}
-
-// for gathering what types different fields are expecting (for field-based statistics)
-type expectedTypeSet struct {
-	fieldExpects map[string]map[expectedType]struct{}
-}
-
-func newExpectedTypeSet() *expectedTypeSet {
-	return &expectedTypeSet{
-		fieldExpects: map[string]map[expectedType]struct{}{},
-	}
-}
-
-func (es *expectedTypeSet) addExpected(field []string, expected expectedType) {
-	fieldStr := ast.FieldString(field)
-	if es.fieldExpects[fieldStr] == nil {
-		es.fieldExpects[fieldStr] = map[expectedType]struct{}{}
-	}
-	es.fieldExpects[fieldStr][expected] = struct{}{}
-}
-
-func (ex *expectedTypeSet) getFields() map[string][]expectedType {
-	out := map[string][]expectedType{}
-	for field, fieldExpects := range ex.fieldExpects {
-		outfield := []expectedType{}
-		for e := range fieldExpects {
-			outfield = append(outfield, e)
-		}
-		out[field] = outfield
-	}
-	return out
 }

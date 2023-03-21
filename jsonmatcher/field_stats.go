@@ -9,9 +9,11 @@ import (
 	"go.uber.org/atomic"
 )
 
-const fieldMarkWindow = 1000
-const fieldNumExamples = 10
-const fieldMapMaxKeys = 10
+const (
+	fieldMarkWindow  = 1000
+	fieldNumExamples = 10
+	fieldMapMaxKeys  = 10
+)
 
 type expectedType string
 

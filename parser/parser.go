@@ -15,9 +15,15 @@ import (
 // It's a type alias to allow exporting the internal type from the generated code.
 type ParseError = grammar.ParseError
 
+// ParseWarning is an warning error message that can be made non-fatal with the
+// [WithWarnings] option.
+type ParseWarning = grammar.ParseError
+
 type Parser struct {
-	debug       bool
-	initGoTypes bool
+	debug        bool
+	initGoTypes  bool
+	withWarnings bool
+	warnings     []*ParseWarning
 }
 
 func (p *Parser) ParseQuery(query string) (ast.Node, error) {
@@ -29,6 +35,7 @@ func (p *Parser) ParseQueryReader(r io.Reader) (ast.Node, error) {
 	if err != nil {
 		return nil, grammar.GetParseError(err)
 	}
+	// get number of stars skipped and warn here.
 	root, err := getRootNode(v)
 	if err != nil {
 		return nil, err
@@ -44,6 +51,15 @@ func (p *Parser) ParseQueryReader(r io.Reader) (ast.Node, error) {
 	ast.Walk(opV, root)
 	if opV.Err() != nil {
 		return nil, opV.Err()
+	}
+
+	warnW := newWarner(p.withWarnings)
+	ast.Walk(warnW, root)
+	if len(warnW.warnings) > 0 {
+		if !p.withWarnings {
+			return nil, warnW.warnings[0]
+		}
+		p.warnings = warnW.warnings
 	}
 	return root, nil
 }
@@ -72,6 +88,16 @@ func Debug() Option {
 func InitGoTypes() Option {
 	return func(p *Parser) error {
 		p.initGoTypes = true
+		return nil
+	}
+}
+
+// WithWarnings instrucs the parser to emit warnings separately that can be
+// viewed with the [parser.Warnings] call. Otherwise, warnings will be returned
+// as errors that will terminate the parser.
+func WithWarnings() Option {
+	return func(p *Parser) error {
+		p.withWarnings = true
 		return nil
 	}
 }

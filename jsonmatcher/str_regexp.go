@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
-func wildcardRegexp(wcString string) *regexp.Regexp {
+// TODO: wcString ...string (combining string search regexp)
+func stringSearchRegexp(wcString string) *regexp.Regexp {
 	wcString = strings.ToLower(wcString)
 	wcRunes := []rune(wcString)
 	var buf bytes.Buffer
-	buf.WriteString(`(?i)`)
+	buf.WriteString(`(?i)\b`)
 	var accum bytes.Buffer
 	for i := 0; i < len(wcRunes); i++ {
 		switch wcRunes[i] {
@@ -24,6 +26,7 @@ func wildcardRegexp(wcString string) *regexp.Regexp {
 				}
 			}
 		case '?', '*':
+			// escape everything until this point
 			buf.WriteString(regexp.QuoteMeta(accum.String()))
 			switch wcRunes[i] {
 			case '?':
@@ -36,10 +39,17 @@ func wildcardRegexp(wcString string) *regexp.Regexp {
 		}
 		accum.WriteRune(wcRunes[i])
 	}
+	// write whatever remains in the accumulator
 	buf.WriteString(regexp.QuoteMeta(accum.String()))
+	buf.WriteString(`\b`)
 	return regexp.MustCompile(buf.String())
 }
 
-func wordRegexp(str string) *regexp.Regexp {
-	return regexp.MustCompile(`(?i)\b` + strings.ToLower(str) + `\b`)
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
