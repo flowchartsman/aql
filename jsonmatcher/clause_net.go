@@ -22,6 +22,7 @@ func (n *netClause) matches(values []*fastjson.Value) bool {
 		}
 		switch n.op {
 		case ast.EQ:
+			// quick regex check
 			switch {
 			case strings.Contains(sv, `/`):
 				// net block
