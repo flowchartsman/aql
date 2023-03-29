@@ -10,6 +10,7 @@ import(
 // ParseError is the exported error type for parsing errors with detailed information as to where they occurred
 // TODO: add the rule back into this message so that otherwise less-than helpful parse errors can simply state
 // what's expected next. Eventually this can be used for autocompletion.
+// TODO: embed further parser errors so all positions can be retrieved.
 type ParseError struct {
     Position ast.Pos  `json:"position"`
 	Expected []string `json:"expected"`
