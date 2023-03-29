@@ -32,7 +32,8 @@ func checkValues(e *ast.ExprNode) *ParseError {
 	case ast.LT, ast.LTE, ast.GT, ast.GTE, ast.BET:
 		failMsg, badIdx = "needs numeric arguments", mustBeOneOf(e.RVals, ast.TypeInt, ast.TypeFloat, ast.TypeTime)
 	case ast.SIM:
-		failMsg, badIdx = "needs string arguments", mustBeOneOf(e.RVals, ast.TypeString, ast.TypeRegex)
+		// Temporarily accept regexp as well for legacy reasons. TODO: remove
+		failMsg, badIdx = "needs string, boolean, or datetime arguments", mustBeOneOf(e.RVals, ast.TypeString, ast.TypeRegex, ast.TypeBool, ast.TypeTime)
 	default:
 		return nil
 	}
