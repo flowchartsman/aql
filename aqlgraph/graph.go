@@ -57,8 +57,7 @@ func (n *namer) next() string {
 }
 
 func QueryGraph(query string) (*Graph, error) {
-	p := parser.NewParser()
-	root, err := p.ParseQuery(query)
+	root, err := parser.ParseQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -139,19 +138,19 @@ func visitNodes(graph *namegraph, anode ast.Node) *cgraph.Node {
 			valColor := ""
 			valType := ""
 			switch rv.(type) {
-			case ast.FloatVal:
+			case *ast.FloatVal:
 				valColor = colorFloat
 				valType = "float"
-			case ast.IntVal:
+			case *ast.IntVal:
 				valColor = colorInt
 				valType = "integer"
-			case ast.StringVal:
+			case *ast.StringVal:
 				valColor = colorString
 				valType = "string"
 			case *ast.NetVal:
 				valColor = colorNet
 				valType = "network"
-			case ast.BoolVal:
+			case *ast.BoolVal:
 				valColor = colorBool
 				valType = "boolean"
 			case *ast.RegexpVal:
@@ -163,7 +162,7 @@ func visitNodes(graph *namegraph, anode ast.Node) *cgraph.Node {
 			}
 			hn.Values = append(hn.Values, NodeVal{
 				ValType: valType,
-				ValStr:  rv.ValStr(),
+				ValStr:  rv.String(),
 				Color:   valColor,
 			})
 		}

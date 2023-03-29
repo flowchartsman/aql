@@ -9,8 +9,6 @@ require (
 	go.uber.org/atomic v1.9.0
 )
 
-require golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0
-
 require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/fogleman/gg v1.3.0 // indirect

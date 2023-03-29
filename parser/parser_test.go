@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -189,8 +190,7 @@ func testParse(t *testing.T, testName string, query string, want string) {
 	t.Helper()
 	t.Run(testName, func(tt *testing.T) {
 		tt.Helper()
-		p := NewParser()
-		n, err := p.ParseQuery(query)
+		n, err := ParseQuery(query)
 		if err != nil {
 			tt.Fatalf("unexpected error: %v", err)
 		}
@@ -201,11 +201,22 @@ func testParse(t *testing.T, testName string, query string, want string) {
 	})
 }
 
+func TestParsingErrors(t *testing.T) {
+	testParseErr(t,
+		`unterminated string simple`,
+		`name:"foo`,
+		`1:10(9): unterminated string value, did you forget a closing '"'?`)
+	// testParseErr(t,
+	// 	`unterminated string middle`,
+	// 	`foo:"foo AND bar:"bar"`,
+	// 	` `)
+}
+
 func TestValueErrors(t *testing.T) {
 	testParseErr(t,
 		`invalid regexp fails`,
 		`name:/*/`,
-		"value error for expression [name: /*/]: invalid regular expression: error parsing regexp: missing argument to repetition operator: `*`")
+		"1:6(5): invalid regular expression [/*/]: error parsing regexp: missing argument to repetition operator: `*`")
 	testParseErr(t,
 		`valid regexp`,
 		`name:/.*/`,
@@ -213,11 +224,11 @@ func TestValueErrors(t *testing.T) {
 	testParseErr(t,
 		`invalid net addr fails`,
 		`net:500.500.500.500/32`,
-		`value error for expression [net: 500.500.500.500/32]: invalid net value: invalid CIDR address: 500.500.500.500/32`)
+		`1:5(4): invalid network value [500.500.500.500/32]: IPv4 field has value >255`)
 	testParseErr(t,
 		`invalid net block fails`,
 		`net:192.168.0.0/99`,
-		`value error for expression [net: 192.168.0.0/99]: invalid net value: invalid CIDR address: 192.168.0.0/99`)
+		`1:5(4): invalid network value [192.168.0.0/99]: prefix length out of range`)
 	testParseErr(t,
 		`valid net block`,
 		`net:192.168.0.0/24`,
@@ -225,23 +236,19 @@ func TestValueErrors(t *testing.T) {
 	testParseErr(t,
 		`invalid short date month fails`,
 		`Andy:1979-13-03`,
-		`value error for expression [Andy: 1979-13-03]: invalid date value: parsing time "1979-13-03": month out of range`)
+		`1:6(5): invalid datetime value [1979-13-03]: month out of range`)
 	testParseErr(t,
 		`invalid short date day fails`,
 		`Joe:1979-02-31`,
-		`value error for expression [Joe: 1979-02-31]: invalid date value: parsing time "1979-02-31": day out of range`)
+		`1:5(4): invalid datetime value [1979-02-31]: day out of range`)
 	testParseErr(t,
 		`valid short date`,
 		`Andy:1979-10-03`,
 		``)
 	testParseErr(t,
-		`invalid short date month fails`,
-		`Andy:1979-13-03`,
-		`value error for expression [Andy: 1979-13-03]: invalid date value: parsing time "1979-13-03": month out of range`)
-	testParseErr(t,
 		`invalid long date time fails`,
 		`AndyPrecise:2021-06-08T20:74:33+00:00`,
-		`value error for expression [AndyPrecise: 2021-06-08T20:74:33+00:00]: invalid date value: parsing time "2021-06-08T20:74:33+00:00": extra text: "T20:74:33+00:00"`)
+		`1:13(12): invalid datetime value [2021-06-08T20:74:33+00:00]: minute out of range`)
 	testParseErr(t,
 		`valid long date`,
 		`AndyPrecise:2021-06-08T20:53:33+00:00`,
@@ -249,34 +256,42 @@ func TestValueErrors(t *testing.T) {
 	testParseErr(t,
 		`invalid value in list fails`,
 		`name:(/.*/,/*/)`,
-		"value error for expression [name: (/.*/,/*/)] value (2/2): invalid regular expression: error parsing regexp: missing argument to repetition operator: `*`")
+		"1:12(11): invalid regular expression [/*/]: error parsing regexp: missing argument to repetition operator: `*`")
+	testParseErr(t,
+		`unnecessary paren fails`,
+		`foo:("bar")`,
+		"1:5(4): unnecessary parenthesis for only one value")
+	testParseErr(t,
+		`empty paren fails`,
+		`name:()`,
+		"1:7(6): unexpected closing parenthesis, expecting values")
 }
 
 func TestOpErrors(t *testing.T) {
 	testParseErr(t,
 		`duplicates not allowed`,
 		`value: (1,2,1)`,
-		`expression [value: (1,2,1)] operation error (value 3/3): operation == duplicate argument found`)
+		`1:13(12): duplicate argument [1] (value 3/3)`)
 	testParseErr(t,
 		`between operator invalid arity 1`,
 		`value:>< 1`,
-		`expression [value:>< 1] operation error: operation >< requires exactly 2 arguments`)
+		`1:1(0): [><] operation requires exactly 2 arguments`)
 	testParseErr(t,
 		`between operator invalid arity >2`,
 		`value:>< (1,2,3)`,
-		`expression [value:>< (1,2,3)] operation error: operation >< requires exactly 2 arguments`)
+		`1:1(0): [><] operation requires exactly 2 arguments`)
 	testParseErr(t,
-		`between operator needs two numeric values`,
+		`between operator needs two numeric arguments`,
 		`value:>< (1, "hello")`,
-		`expression [value:>< (1,"hello")] operation error (value 2/2): operation >< requires numeric arguments, found string`)
+		`1:14(13): [><] operation needs numeric arguments`)
 	testParseErr(t,
 		`between operator requires second value to be greater`,
 		`value:>< (2, 1)`,
-		`expression [value:>< (2,1)] operation error (value 2/2): operation >< requires the second value to be greater`)
+		`1:14(13): [><] operation requires the second argument be greater`)
 	// ensure numeric requirements
 	for _, op := range []string{`<`, `<=`, `>`, `>=`, `><`} {
 		query := fmt.Sprintf(`value:%s "hello"`, op)
-		expectedErr := fmt.Sprintf(`expression [value:%[1]s "hello"] operation error: operation %[1]s requires numeric arguments, found string`, op)
+		expectedErr := fmt.Sprintf(`*[%s] operation needs numeric arguments`, op)
 		testName := fmt.Sprintf(`operation %s requires numeric value(s)`, op)
 		testParseErr(t,
 			testName,
@@ -287,20 +302,26 @@ func TestOpErrors(t *testing.T) {
 	testParseErr(t,
 		`similarity operator needs string values`,
 		`value:~ 2`,
-		`expression [value:~ 2] operation error: operation ~ requires string arguments, found integer`)
+		`1:9(8): [~] operation needs string arguments`)
 }
 
 func testParseErr(t *testing.T, testName string, query string, wantErr string) {
 	t.Helper()
 	t.Run(testName, func(t *testing.T) {
 		t.Helper()
-		p := NewParser(InitGoTypes())
-		_, err := p.ParseQuery(query)
+		_, err := ParseQuery(query)
 		if err != nil {
+			t.Log(PrettyErr(query, err))
 			if wantErr == "" {
 				t.Fatalf("\nunexpected error:\n%s", err)
 			}
-			if err.Error() != wantErr {
+			tv := false
+			if wantErr[0] == '*' {
+				tv = strings.HasSuffix(err.Error(), wantErr[1:])
+			} else {
+				tv = err.Error() == wantErr
+			}
+			if !tv {
 				t.Fatalf("\nexpected:\n%s\ngot:\n%s", wantErr, err)
 			}
 		} else {

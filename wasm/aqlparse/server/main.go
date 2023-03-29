@@ -38,6 +38,8 @@ func main() {
 
 	wasmfs := new(DiskFS)
 	wasmfs.AddFile(filepath.Join(os.Args[1], "wasm_exec.js"))
+	wasmfs.AddFile(filepath.Join(os.Args[1], "hwt.css"))
+	wasmfs.AddFile(filepath.Join(os.Args[1], "style.css"))
 	wasmfs.AddFile(filepath.Join(os.Args[1], "aqlparse.wasm"))
 
 	fserv := http.FileServer(http.FS(wasmfs))

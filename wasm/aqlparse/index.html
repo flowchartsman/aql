@@ -1,9 +1,27 @@
 <!doctype html>
 <html>
-<head>
     <head>
+        <meta charset="utf-8">
+        <title>AQL Wasm parser example</title>
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
+        <link rel="stylesheet" href="hwt.css">
+        <link rel="stylesheet" href="style.css">
+        <script src="https://cdn.jsdelivr.net/npm/highlight-within-textarea@2.0.5/jquery.highlight-within-textarea.min.js"></script>
         <script src="wasm_exec.js"></script>
         <script>
+            if (!WebAssembly.instantiateStreaming) { // polyfill
+                WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                    const source = await (await resp).arrayBuffer();
+                    return await WebAssembly.instantiate(source, importObject);
+                };
+            }
+
+            // promise to wait for wasm to be reasdy
+            let isReady = new Promise((resolve) => {
+                // @ts-ignore
+                window.notifyBrowser = resolve;
+            });
+
             const go = new Go();
             WebAssembly.instantiateStreaming(fetch("aqlparse.wasm"), go.importObject)
                 .then(result => {
@@ -11,30 +29,46 @@
             });
         </script>
     </head>
-</head>
-   <body style="text-align-last: center">
+   <body>
         <div>
-            <textarea id="input" cols="40" rows="10">
-            </textarea>
+        <textarea class="query" spellcheck="false"></textarea>
         </div>
-        <div>
-            <input type="submit"
-                   value="> Parse AQL Query <"
-                   onclick="aqlUpdate(input.value)"/>
-        </div>
-        <div>
-            <textarea id="output" cols="40" rows="10">
-            </textarea>
-        </div>
+        <output id="output" class="ast">
+        </output>
     </body>
     <script>
-        let aqlUpdate = function(input) {
-            let result = parseAQL(input);
-            if (result.error !== '') {
-                alert(result.error);
-            } else {
-                output.value = result.encoded;
+        async function setup() {
+            await isReady;
+            let aqlUpdate = function() {
+                let input = $(".query").val();
+                let pos = [];
+                if (input.length === 0) {
+                    $("output").text(" ").removeClass("error").addClass("ast");
+                    return [];
+                }
+                let result = parseAQL(input);
+                if (result.errors.length > 0) {
+                    $("output").text("").removeClass("ast").addClass("error");
+                    let i = 0;
+                    while (i < result.errors.length) {
+                        if ('start' in result.errors[i]) {
+                            pos.push([result.errors[i].start, result.errors[i].end]);
+                        }
+                        $("output").append(document.createTextNode(result.errors[i].msg));
+                        i++;
+                    }
+                } else {
+                    $("output").text(result.ast).removeClass("error").addClass("ast");
+                }
+                return pos;
             }
+            $('.query').highlightWithinTextarea({highlight:[
+                {
+                    highlight: aqlUpdate,
+                    className: 'red'
+                }
+            ]});
         }
+        setup();
     </script>
 </html>

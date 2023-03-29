@@ -1,196 +1,135 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/flowchartsman/aql/parser/ast"
 )
 
-type opValidator struct {
-	err error
-}
+type exprCheck func(expr *ast.ExprNode) *ParseError
 
-func newopValidator() *opValidator {
-	return &opValidator{}
-}
-
-func (o *opValidator) Err() error {
-	return o.err
-}
-
-func (o *opValidator) Visit(node ast.Node) ast.Visitor {
-	if o.err != nil {
-		return nil
-	}
+func opValidator(node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.ExprNode:
-		checker := newopChecker(n)
-		// global operation checks
-		checker.check(noDuplicates())
-		// ensure types are correct
-		switch n.Op {
-		case ast.LT, ast.LTE, ast.GT, ast.GTE, ast.BET:
-			checker.check(allNumericVals())
-		case ast.SIM:
-			checker.check(allStringVals())
+		for _, check := range []exprCheck{
+			checkValues,
+			checkArity,
+			checkNoDuplicates,
+			checkBetween,
+		} {
+			if err := check(n); err != nil {
+				return err
+			}
 		}
-		// ensure only one netblock in individual comparison.
-		// check between arity and ordering
-		if n.Op == ast.BET {
-			checker.check(
-				validArity(2, 2),
-				betweenOrdering(),
-			)
-		}
-		if checker.err() != nil {
-			o.err = checker.err()
-		}
+	}
+	return nil
+}
+
+func checkValues(e *ast.ExprNode) *ParseError {
+	var failMsg string
+	var badIdx int
+	switch e.Op {
+	case ast.LT, ast.LTE, ast.GT, ast.GTE, ast.BET:
+		failMsg, badIdx = "needs numeric arguments", mustBeOneOf(e.RVals, ast.TypeInt, ast.TypeFloat, ast.TypeTime)
+	case ast.SIM:
+		failMsg, badIdx = "needs string arguments", mustBeOneOf(e.RVals, ast.TypeString, ast.TypeRegex)
+	default:
 		return nil
 	}
-	return o
-}
-
-type opChecker struct {
-	e    error
-	node *ast.ExprNode
-}
-
-func newopChecker(node *ast.ExprNode) *opChecker {
-	return &opChecker{
-		node: node,
+	if badIdx >= 0 {
+		return ErrorAt(e.RVals[badIdx].Pos(), fmt.Sprintf("[%s] operation %s", e.Op, failMsg))
 	}
+	return nil
 }
 
-func (o *opChecker) check(checks ...opCheck) {
-	for _, c := range checks {
-		if o.e == nil {
-			if problem, argNum := c(o.node); problem != "" {
-				var sb strings.Builder
-				sb.WriteString(fmt.Sprintf("expression [%s] operation error", o.node.FriendlyString()))
-				if argNum >= 0 {
-					sb.WriteString(fmt.Sprintf(" (value %d/%d)", argNum+1, len(o.node.RVals)))
-				}
-				sb.WriteString(fmt.Sprintf(": operation %s %s", o.node.Op, problem))
-				o.e = errors.New(sb.String())
-				// found an error, return
-				return
+func checkArity(e *ast.ExprNode) *ParseError {
+	numArgs := len(e.RVals)
+	var min, max int
+	switch e.Op {
+	case ast.LT, ast.LTE, ast.GT, ast.GTE:
+		min, max = 1, 1
+	case ast.BET:
+		min, max = 2, 2
+	case ast.EXS, ast.NUL:
+		min, max = 0, 0
+	default:
+		min, max = 1, 0
+	}
+
+	var msg string
+	switch {
+	case min == 0 && max == 0:
+		if numArgs > 0 {
+			msg = "does not accept arguments"
+		}
+	case min == max:
+		if numArgs != min {
+			msg = fmt.Sprintf("requires exactly %d arguments", min)
+		}
+	case min < max:
+		if numArgs < min || numArgs > max {
+			msg = fmt.Sprintf("requires between %d and %d arguments", min, max)
+		}
+	case min > max:
+		if numArgs < min {
+			msg = fmt.Sprintf("requires at least %d arguments", min)
+		}
+	}
+	if msg != "" {
+		return ErrorAt(e.Pos(), fmt.Sprintf("[%s] operation %s", e.Op, msg))
+	}
+	return nil
+}
+
+func checkNoDuplicates(e *ast.ExprNode) *ParseError {
+	if len(e.RVals) < 2 {
+		return nil
+	}
+	found := map[string]struct{}{}
+	for i, rv := range e.RVals {
+		if _, ok := found[rv.String()]; ok {
+			return ErrorAt(e.RVals[i].Pos(), fmt.Sprintf("duplicate argument [%s] (value %d/%d)", rv.String(), i+1, len(e.RVals)))
+		}
+		found[rv.String()] = struct{}{}
+	}
+	return nil
+}
+
+func checkBetween(e *ast.ExprNode) *ParseError {
+	if e.Op != ast.BET {
+		return nil
+	}
+	var l, r float64
+	switch lnv := e.RVals[0].(type) {
+	case *ast.IntVal:
+		l = float64(lnv.Value())
+	case *ast.FloatVal:
+		l = lnv.Value()
+	}
+	switch rnv := e.RVals[1].(type) {
+	case *ast.IntVal:
+		r = float64(rnv.Value())
+	case *ast.FloatVal:
+		r = rnv.Value()
+	}
+	if r <= l {
+		return ErrorAt(e.RVals[1].Pos(), "[><] operation requires the second argument be greater")
+	}
+	return nil
+}
+
+func mustBeOneOf(values []ast.Val, types ...ast.ValType) (badIdx int) {
+	if len(types) == 0 {
+		panic("invalid type check")
+	}
+VLOOP:
+	for v := range values {
+		for t := range types {
+			if values[v].Type() == types[t] {
+				continue VLOOP
 			}
 		}
+		return v
 	}
-}
-
-func (o *opChecker) err() error {
-	return o.e
-}
-
-type opCheck func(node *ast.ExprNode) (problem string, argNum int)
-
-func validArity(atleast, atmost int) opCheck {
-	if atleast > atmost {
-		panic("invalid arity check: atleast must be <= atmost")
-	}
-	return func(node *ast.ExprNode) (string, int) {
-		if atleast == atmost && len(node.RVals) != atleast {
-			return fmt.Sprintf("requires exactly %d arguments", atleast), -1
-		}
-		if len(node.RVals) < atleast {
-			return fmt.Sprintf("requires at least %d arguments", atleast), -1
-		}
-		if len(node.RVals) > atleast {
-			return fmt.Sprintf("exceeds the maximum of %d arguments", atmost), len(node.RVals) - 1
-		}
-		return "", 0
-	}
-}
-
-func betweenOrdering() opCheck {
-	return func(node *ast.ExprNode) (string, int) {
-		if len(node.RVals) != 2 {
-			panic("somehow between op with invalid arity slipped through")
-		}
-		var l, r float64
-		switch lnv := node.RVals[0].(type) {
-		case ast.IntVal:
-			l = float64(lnv.Value())
-		case ast.FloatVal:
-			l = lnv.Value()
-		}
-		switch rnv := node.RVals[1].(type) {
-		case ast.IntVal:
-			r = float64(rnv.Value())
-		case ast.FloatVal:
-			r = rnv.Value()
-		}
-		if r <= l {
-			return "requires the second value to be greater", 1
-		}
-		return "", 0
-	}
-}
-
-func allNumericVals() opCheck {
-	return func(node *ast.ExprNode) (string, int) {
-		badArg := -1
-		for i, rv := range node.RVals {
-			if !valNumeric(rv) {
-				if len(node.RVals) > 1 {
-					badArg = i
-				}
-				return fmt.Sprintf("requires numeric arguments, found %s", rv.FriendlyType()), badArg
-			}
-		}
-		return "", 0
-	}
-}
-
-func allStringVals() opCheck {
-	return func(node *ast.ExprNode) (string, int) {
-		badArg := -1
-		for i, rv := range node.RVals {
-			switch rv.(type) {
-			case ast.StringVal, *ast.RegexpVal:
-				// okay
-				// TODO: remove temporary regexp allowance
-			default:
-				if len(node.RVals) > 1 {
-					badArg = i
-				}
-				return fmt.Sprintf("requires string arguments, found %s", rv.FriendlyType()), badArg
-			}
-		}
-		return "", 0
-	}
-}
-
-func noDuplicates() opCheck {
-	return func(node *ast.ExprNode) (string, int) {
-		if len(node.RVals) <= 1 {
-			return "", -1
-		}
-		found := map[string]struct{}{}
-		for i, rv := range node.RVals {
-			if _, ok := found[rv.ValStr()]; ok {
-				return "duplicate argument found", i
-			}
-			found[rv.ValStr()] = struct{}{}
-		}
-		return "", 0
-	}
-}
-
-func valNumeric(value ast.Val) bool {
-	switch value.(type) {
-	case ast.IntVal, ast.FloatVal, *ast.TimeVal:
-		return true
-	}
-	return false
-}
-
-func valString(value ast.Val) bool {
-	if _, ok := value.(ast.StringVal); ok {
-		return true
-	}
-	return false
+	return -1
 }
