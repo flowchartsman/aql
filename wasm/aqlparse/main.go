@@ -47,7 +47,7 @@ func parseAQL(query string) (string, error) {
 func errConvert(err error) map[string]any {
 	if pe, ok := err.(*parser.ParseError); ok {
 		return map[string]any{
-			"msg":   pe.Message(),
+			"msg":   fmt.Sprintf("%s -> %s", pe.Prefix, pe.Msg),
 			"start": pe.Position.Offset,
 			"end":   pe.Position.Offset + pe.Position.Len,
 		}

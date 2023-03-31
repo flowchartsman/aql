@@ -1,0 +1,8 @@
+T eq
+number.int:1
+T gt
+number.int:>0
+F !gt
+number.int:>1
+T ge
+number.int:>=0

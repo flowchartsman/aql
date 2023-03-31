@@ -1,0 +1,88 @@
+{
+    "date": {
+        "fullDate": "1970-01-02",
+        "dateTime": "1970-01-02T15:53:33+00:00",
+        "shortDate": "1/2/70",
+        "writtenDate": "January 1st, 1970"
+    },
+    "text": {
+        "name": "Andy",
+        "description": "大懒虫",
+        "likes": [
+            "Pizza (food)",
+            "Pig (dog)",
+            "辣椒油 (food)",
+            "Rolf (dog)",
+            "Kirby (cat)"
+        ]
+    },
+    "number": {
+        "int": 1,
+        "float": 1.1,
+        "not": "hello",
+        "zero": "0"
+    },
+    "attributes": {
+        "nice": true,
+        "dead": false,
+        "fun": "true",
+        "enjoys_excessive_tests": "false",
+        "likes_binary": 1,
+        "killer_robot": 0,
+        "ternary": 3,
+        "not specified": "",
+        "buddhanature": null
+    },
+    "net": {
+        "router": "192.168.1.0"
+    },
+    "arcade_visits": [
+        {
+            "local_mall": [
+                [
+                    {
+                        "game": "pacman",
+                        "score": 1000,
+                        "felt": "hopeful"
+                    },
+                    {
+                        "game": "frogger",
+                        "score": 5,
+                        "felt": "indifferent"
+                    }
+                ],
+                [
+                    {
+                        "game": "pacman",
+                        "score": 5000,
+                        "felt": "good"
+                    },
+                    {
+                        "game": "pinbot",
+                        "score": 45,
+                        "felt": "uncoordinated"
+                    }
+                ],
+                [
+                    {
+                        "game": "pacman",
+                        "score": 100000,
+                        "felt": "great"
+                    }
+                ],
+                [
+                    {
+                        "game": "pacman",
+                        "score": 10,
+                        "felt": "ashamed"
+                    },
+                    {
+                        "game": "frogger",
+                        "score": 1,
+                        "felt": "still indifferent"
+                    }
+                ]
+            ]
+        }
+    ]
+}

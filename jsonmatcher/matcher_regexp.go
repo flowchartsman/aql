@@ -6,11 +6,11 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-type regexpClause struct {
+type regexpMatcher struct {
 	value *regexp.Regexp
 }
 
-func (r *regexpClause) matches(values []*fastjson.Value) bool {
+func (r *regexpMatcher) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
 		str, ok := getStringVal(v)
 		if !ok {

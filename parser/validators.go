@@ -14,7 +14,7 @@ func opValidator(node ast.Node) error {
 		for _, check := range []exprCheck{
 			checkValues,
 			checkArity,
-			checkNoDuplicates,
+			checkRVals,
 			checkBetween,
 		} {
 			if err := check(n); err != nil {
@@ -33,28 +33,42 @@ func checkValues(e *ast.ExprNode) *ParseError {
 		failMsg, badIdx = "needs numeric arguments", mustBeOneOf(e.RVals, ast.TypeInt, ast.TypeFloat, ast.TypeTime)
 	case ast.SIM:
 		// Temporarily accept regexp as well for legacy reasons. TODO: remove
-		failMsg, badIdx = "needs string, boolean, or datetime arguments", mustBeOneOf(e.RVals, ast.TypeString, ast.TypeRegex, ast.TypeBool, ast.TypeTime)
+		failMsg, badIdx = "needs string, or boolean arguments", mustBeOneOf(e.RVals, ast.TypeString, ast.TypeRegex, ast.TypeBool)
 	default:
 		return nil
 	}
 	if badIdx >= 0 {
-		return ErrorAt(e.RVals[badIdx].Pos(), fmt.Sprintf("[%s] operation %s", e.Op, failMsg))
+		return ErrorWith(e.RVals[badIdx], fmt.Sprintf("[%s] operation %s", e.Op, failMsg))
 	}
 	return nil
 }
 
 func checkArity(e *ast.ExprNode) *ParseError {
+	const (
+		inf = -1
+	)
 	numArgs := len(e.RVals)
 	var min, max int
 	switch e.Op {
-	case ast.LT, ast.LTE, ast.GT, ast.GTE:
-		min, max = 1, 1
-	case ast.BET:
-		min, max = 2, 2
+	// unary
 	case ast.EXS, ast.NUL:
 		min, max = 0, 0
+
+	// binary
+	case ast.LT, ast.LTE, ast.GT, ast.GTE:
+		min, max = 1, 1
+
+	// ternary
+	case ast.BET:
+		min, max = 2, 2
+
+	// n-ary
+	case ast.EQ, ast.SIM:
+		min, max = 1, inf
+
+	// backstop
 	default:
-		min, max = 1, 0
+		panic(fmt.Sprintf("undefined operation in arity check: [%s]", e.Op))
 	}
 
 	var msg string
@@ -71,27 +85,44 @@ func checkArity(e *ast.ExprNode) *ParseError {
 		if numArgs < min || numArgs > max {
 			msg = fmt.Sprintf("requires between %d and %d arguments", min, max)
 		}
-	case min > max:
-		if numArgs < min {
+	case max == inf:
+		if min > 0 && numArgs < min {
 			msg = fmt.Sprintf("requires at least %d arguments", min)
 		}
+	// backstop
+	default:
+		panic(fmt.Sprintf("invalid arity min/max: %d/%d", min, max))
 	}
+
 	if msg != "" {
-		return ErrorAt(e.Pos(), fmt.Sprintf("[%s] operation %s", e.Op, msg))
+		return ErrorWith(e, fmt.Sprintf("[%s] operation %s", e.Op, msg))
 	}
 	return nil
 }
 
-func checkNoDuplicates(e *ast.ExprNode) *ParseError {
-	if len(e.RVals) < 2 {
+// check for duplicates and conflicting values
+func checkRVals(e *ast.ExprNode) *ParseError {
+	if len(e.RVals) <= 1 {
 		return nil
 	}
-	found := map[string]struct{}{}
+	seen := map[string]struct{}{}
 	for i, rv := range e.RVals {
-		if _, ok := found[rv.String()]; ok {
-			return ErrorAt(e.RVals[i].Pos(), fmt.Sprintf("duplicate argument [%s] (value %d/%d)", rv.String(), i+1, len(e.RVals)))
+		sv := rv.String()
+		if _, found := seen[sv]; found {
+			return ErrorWith(e.RVals[i], fmt.Sprintf("duplicate argument [%s] (value %d/%d)", sv, i+1, len(e.RVals)))
 		}
-		found[rv.String()] = struct{}{}
+		if e.Op == ast.EQ && (sv == "true" || sv == "false") {
+			conflictingBool := false
+			if sv == "true" {
+				_, conflictingBool = seen["false"]
+			} else {
+				_, conflictingBool = seen["true"]
+			}
+			if conflictingBool {
+				return ErrorWith(e.RVals[i], fmt.Sprintf("conflicting boolean value [%s] (value %d/%d)", sv, i+1, len(e.RVals)))
+			}
+		}
+		seen[rv.String()] = struct{}{}
 	}
 	return nil
 }
@@ -100,6 +131,17 @@ func checkBetween(e *ast.ExprNode) *ParseError {
 	if e.Op != ast.BET {
 		return nil
 	}
+	if e.RVals[0].Type() == ast.TypeTime {
+		if e.RVals[1].Type() != ast.TypeTime {
+			return ErrorAt(e.RVals[1].Pos(), "second argument must also be a datetime value")
+		}
+		lt, rt := e.RVals[0].(*ast.TimeVal), e.RVals[1].(*ast.TimeVal)
+		if lt.Value().After(rt.Value()) || lt.Value().Equal(rt.Value()) {
+			return ErrorAt(e.RVals[1].Pos(), "[><] operation requires the second argument be greater")
+		}
+		return nil
+	}
+
 	var l, r float64
 	switch lnv := e.RVals[0].(type) {
 	case *ast.IntVal:

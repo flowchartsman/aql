@@ -7,15 +7,28 @@ import(
     "github.com/flowchartsman/aql/parser/ast"
 )
 
+// TODO: 
+//   - stop removing stars in generated parser and just remove them later. This
+//     allows hinting for them instead, and prevents incorrect offsets in pos.
+//   - go back to value checking with a visitor. This lets operation errors be
+//     listed as messages, which will let parsing proceed, but highlight
+//     problems. Also simplifies parser. Will need error method added to
+//     MessageVisitor.
+//   - add the rule into ParseError  message so that otherwise less-than helpful
+//     parse errors can simply state what's expected next. Eventually this can
+//     be used for autocompletion.
+//   - embed >1 parser errors from PEG so all positions can be retrieved (and
+//     displayed)
+//   - rename node types to line up AST more with convention (like expression,
+//     operation, etc)
+//   - attach position to all ast nodes
+
 // ParseError is the exported error type for parsing errors with detailed information as to where they occurred
-// TODO: add the rule back into this message so that otherwise less-than helpful parse errors can simply state
-// what's expected next. Eventually this can be used for autocompletion.
-// TODO: embed further parser errors so all positions can be retrieved.
 type ParseError struct {
     Position ast.Pos  `json:"position"`
 	Expected []string `json:"expected"`
     Msg      string   `json:"message"`
-	prefix   string
+    List     []error
 }
 
 // helper method to exfiltrate pigeon's generated error type as a type that conforms to PositionErr
@@ -35,7 +48,6 @@ func GetParseError(err error) *ParseError {
                     Len:    toklen,
                 },
 				Msg:      pe.Inner.Error(),
-				prefix:   pe.prefix,
 				Expected: pe.expected,
 			}
 		}
@@ -296,9 +308,9 @@ Value <- val:(QuotedValue / RegexValue / BareValue) {
     return nil, fmt.Errorf("unknown type of value [%s] -- did you mean %q?", c.text, c.text)
 }
 
-/*******************
-SPECIFIC VALUE TYPES
-********************/
+/**********
+VALUE TYPES
+**********/
 
 QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* EndingQuote {
     pos := getpos(c)

@@ -7,12 +7,12 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-type boolClause struct {
+type boolMatcher struct {
 	value bool
 	op    ast.Op
 }
 
-func (s *boolClause) matches(values []*fastjson.Value) bool {
+func (s *boolMatcher) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
 		var (
 			bv bool
@@ -24,6 +24,7 @@ func (s *boolClause) matches(values []*fastjson.Value) bool {
 		case ast.SIM:
 			bv, ok = getTruthyVal(v)
 		default:
+			// backstop
 			panic(fmt.Sprintf("invalid op for boolean comparison: %s", s.op))
 		}
 		if !ok {

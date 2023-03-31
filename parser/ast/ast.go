@@ -10,11 +10,26 @@ import (
 	"time"
 )
 
+type Op string
+
+const (
+	EQ  Op = `==`
+	LT  Op = `<`
+	LTE Op = `<=`
+	GT  Op = `>`
+	GTE Op = `>=`
+	BET Op = `><`
+	SIM Op = `~`
+	EXS Op = `exists`
+	NUL Op = `null`
+)
+
 type Node interface {
 	IsNode()
 	String() string
 }
 
+// TODO: AndExpr, etc
 type AndNode struct {
 	Left  Node
 	Right Node
@@ -461,17 +476,3 @@ func FieldString(pathparts []string) string {
 	}
 	return sb.String()
 }
-
-type Op string
-
-const (
-	EQ  Op = `==`
-	LT  Op = `<`
-	LTE Op = `<=`
-	GT  Op = `>`
-	GTE Op = `>=`
-	BET Op = `><`
-	SIM Op = `~`
-	EXS Op = `exists`
-	NUL Op = `null`
-)

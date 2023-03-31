@@ -1,0 +1,6 @@
+T valid net contains
+net.router:192.168.1.0/24
+F valid net does not contain
+net.router:192.168.2.0/24
+F invalid value not contained
+text.name:192.168.2.0/24

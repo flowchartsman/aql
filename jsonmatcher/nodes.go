@@ -2,6 +2,7 @@ package jsonmatcher
 
 import "github.com/valyala/fastjson"
 
+// TODO: Allow errors to bubble up from `matches`.
 type matcherNode interface {
 	matches(value *fastjson.Value) bool
 	stats() *StatsNode
@@ -84,7 +85,7 @@ func (s *subdocNode) stats() *StatsNode {
 
 type exprNode struct {
 	path      []string
-	clauses   []clause
+	matchers  []matcher
 	nodeStats *nodeStats
 }
 
@@ -92,8 +93,8 @@ func (e exprNode) matches(value *fastjson.Value) bool {
 	matched := false
 	testValues := getValues(e.path, value)
 	if len(testValues) > 0 {
-		for _, c := range e.clauses {
-			if c.matches(testValues) {
+		for _, m := range e.matchers {
+			if m.matches(testValues) {
 				matched = true
 				break
 			}

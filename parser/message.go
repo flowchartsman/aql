@@ -20,6 +20,7 @@ const (
 	msgMin MessageType = iota
 	MsgHint
 	MsgWarning
+	MsgError
 	msgMax
 )
 
@@ -29,6 +30,8 @@ func typeStr(t MessageType) string {
 		return "HINT"
 	case MsgWarning:
 		return "WARNING"
+	case MsgError:
+		return "ERROR"
 	default:
 		return "<INVALID TYPE>"
 	}
@@ -62,6 +65,13 @@ func (p *ParserMessage) Message() string {
 
 func (p *ParserMessage) Pos() ast.Pos {
 	return p.Position
+}
+
+func (p *ParserMessage) assErr() *ParseError {
+	return &ParseError{
+		Position: p.Position,
+		Msg:      p.Msg,
+	}
 }
 
 func newMessage(t MessageType, pos ast.Pos, msg string) *ParserMessage {

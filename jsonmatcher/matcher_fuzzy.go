@@ -6,17 +6,17 @@ import (
 	"golang.org/x/text/search"
 )
 
-type fuzzyClause struct {
+type fuzzyMatcher struct {
 	pat *search.Pattern
 }
 
-func newFuzzyClause(str string) *fuzzyClause {
-	return &fuzzyClause{
+func newFuzzyMatcher(str string) *fuzzyMatcher {
+	return &fuzzyMatcher{
 		pat: search.New(language.Und, search.Loose).CompileString(str),
 	}
 }
 
-func (s *fuzzyClause) matches(values []*fastjson.Value) bool {
+func (s *fuzzyMatcher) matches(values []*fastjson.Value) bool {
 	for _, v := range values {
 		str, ok := getStringVal(v)
 		if !ok {

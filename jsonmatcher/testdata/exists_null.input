@@ -1,0 +1,6 @@
+T existing field matches
+text.name:exists
+F missing field does not match
+text.greatest_fear:exists
+T negated exists for missing matches
+!text.greatest_fear:exists

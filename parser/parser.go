@@ -44,6 +44,8 @@ func ParseQueryReader(r io.Reader, options ...Option) (ast.Node, error) {
 		return nil, genericParseError(fmt.Sprintf("parser returned unknown type: %T", t))
 	}
 
+	// TODO Accumulate errors/messages from here on out and return them all.
+
 	for _, v := range opts.visitors {
 		err := walk(v, root)
 		if err != nil {
@@ -52,9 +54,16 @@ func ParseQueryReader(r io.Reader, options ...Option) (ast.Node, error) {
 			}
 			return nil, genericParseError("validation failure: " + err.Error())
 		}
+		// Check to see if a MessageValidator had an error.
+		// TODO: allow all to return.
+		if mv, ok := v.(*MessageVisitor); ok {
+			if mv.tape.firstErr != nil {
+				return nil, mv.tape.firstErr.assErr()
+			}
+		}
 	}
 
-	// get number of stars skipped and warn here.
+	// TODO: visitor to skip/count stars and warn here-ish.
 
 	// opV := newopValidator()
 	// ast.Walk(opV, root)
@@ -75,11 +84,22 @@ func ParseQueryReader(r io.Reader, options ...Option) (ast.Node, error) {
 
 func genericParseError(message string) *ParseError {
 	return &ParseError{
-		Position: ast.Pos{Offset: -1},
+		Position: ast.NoPosition(),
 		Msg:      message,
 	}
 }
 
+// ErrorWith allows using an AST node as the position basis for a parser error
+// message.
+func ErrorWith(node Positioned, message string) *ParseError {
+	return &ParseError{
+		Position: node.Pos(),
+		Msg:      message,
+	}
+}
+
+// ErrorAt allows returning a parser error with a manually-defined position.
+// Useful for tweaking position from a node.
 func ErrorAt(pos ast.Pos, message string) *ParseError {
 	return &ParseError{
 		Position: pos,
