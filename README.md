@@ -101,7 +101,6 @@ Intervening arrays will be transparently traversed, provided they contain object
             "inner": [
                 "world"
             ]
-        }
         },
         {
             "inner": "from AQL"
