@@ -3,6 +3,7 @@ package ast
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/netip"
 	"regexp"
 	"strconv"
@@ -234,7 +235,7 @@ type FloatVal struct {
 func NewFloatVal(b []byte, pos Pos) (*FloatVal, error) {
 	sv := string(b)
 	fv, err := strconv.ParseFloat(sv, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(fv) {
 		return nil, fmt.Errorf("invalid float value [%s]", sv)
 	}
 	return &FloatVal{
