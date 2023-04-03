@@ -14,7 +14,7 @@ import(
 //     listed as messages, which will let parsing proceed, but highlight
 //     problems. Also simplifies parser. Will need error method added to
 //     MessageVisitor.
-//   - add the rule into ParseError  message so that otherwise less-than helpful
+//   - add the rule into ParseError message so that otherwise less-than helpful
 //     parse errors can simply state what's expected next. Eventually this can
 //     be used for autocompletion.
 //   - embed >1 parser errors from PEG so all positions can be retrieved (and
@@ -22,6 +22,7 @@ import(
 //   - rename node types to line up AST more with convention (like expression,
 //     operation, etc)
 //   - attach position to all ast nodes
+//   - comments
 
 // ParseError is the exported error type for parsing errors with detailed information as to where they occurred
 type ParseError struct {
@@ -220,12 +221,16 @@ Comparison <- '(' _ query:OrClause _ ')'{
         Field:      field.([]string),
         Position:   getpos(c),
     }, nil
-} / field:Field _ '{' _ query:OrClause _ '}' {
+}
+/*
+  / field:Field _ '{' _ query:OrClause _ '}' {
     return &ast.SubdocNode{
         Field: field.([]string),
         Expr:  query.(ast.Node),
     }, nil
-} /  field:Field _ ':' _ operation:opComp? _ values:ValueList {
+} 
+*/
+  /  field:Field _ ':' _ operation:opComp? _ values:ValueList {
     var opOut ast.Op
     if operation == nil {
         opOut = ast.EQ
@@ -269,9 +274,8 @@ UnquotedFieldPiece <- [a-z0-9_-]i+ {
 }
 
 QuotedFieldPiece <- qv:QuotedValue {
-    //return qv.(string), nil
+    // intercept the ast node and just use it as a string for field pieces
     return(qv.(*ast.StringVal).Value()), nil
-    //return string(qv.(ast.StringVal)), nil
 }
 
 // TODO: Remove Star
@@ -314,7 +318,6 @@ VALUE TYPES
 
 QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* EndingQuote {
     pos := getpos(c)
-    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
     s, err := strconv.Unquote(string(c.text))
     if err != nil {
         return nil, tokErrf(pos, "invalid string: %s", err)
@@ -328,7 +331,7 @@ EscapedChar <- [\x00-\x1f"\\]
 
 EscapeSequence <- SingleCharEscape / UnicodeEscape
 
-SingleCharEscape <- ["\\/bfnrt]
+SingleCharEscape <- ["\\bfnrt]
 
 UnicodeEscape <- 'u' HexDigit HexDigit HexDigit HexDigit
 
@@ -484,7 +487,7 @@ TERMINAL ERROR HANDLING STATES
 ******************************/
 
 ErrUntermStr <- #{
-    return errors.New("unterminated string value, did you forget a closing '\"'?")
+    return errors.New(`unterminated string, check for missing closing ["] or unescaped [\]`)
 }
 
 ErrUntermRegex <- #{
