@@ -4,50 +4,37 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strings"
 	"syscall/js"
 
 	"github.com/flowchartsman/aql/parser"
 )
 
-func parseWrapper() js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		if len(args) == 0 {
-			return jsResp("", errors.New("Not enough arguments"))
-		}
-		input := args[0].String()
-		return jsResp(parseAQL(input))
-	})
-}
-
-func jsResp(encoded string, err error) map[string]any {
-	var errstr string
-	if err != nil {
-		errstr = err.Error()
-	}
-	return map[string]any{
-		"error":   errstr,
-		"encoded": encoded,
-	}
-}
-
-func parseAQL(query string) (string, error) {
-	root, perr := parser.ParseQuery(query)
+func parseAQL(query string) (string, []*parser.ParserMessage, error) {
+	visitor := parser.NewMessageVisitor(warningVisitor)
+	root, perr := parser.ParseQuery(query, parser.Visitors(visitor))
 	if perr != nil {
-		return "", perr
+		return "", nil, perr
 	}
-	tree, err := json.Marshal(root)
+	tree, err := json.MarshalIndent(root, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("marshal error: %v", err)
+		return "", nil, fmt.Errorf("marshal error: %v", err)
 	}
-	return string(tree), nil
+	return string(tree), visitor.Messages(), nil
 }
 
-func errConvert(err error) map[string]any {
+func errConvert(err error, input string) map[string]any {
 	if pe, ok := err.(*parser.ParseError); ok {
+		msg := pe.Msg
+		if strings.HasPrefix(msg, "no match found") {
+			msg = "incomplete query"
+			pe.Position.Offset = len(input) - 1
+			pe.Position.Len = 1
+		}
 		return map[string]any{
-			"msg":   fmt.Sprintf("%s -> %s", pe.Prefix, pe.Msg),
+			"type":  "error",
+			"msg":   msg,
 			"start": pe.Position.Offset,
 			"end":   pe.Position.Offset + pe.Position.Len,
 		}
@@ -58,21 +45,43 @@ func errConvert(err error) map[string]any {
 	}
 }
 
+func msgConvert(msg *parser.ParserMessage, input string) map[string]any {
+	var msgType string
+	switch msg.Type {
+	case parser.MsgHint:
+		msgType = "hint"
+	case parser.MsgWarning:
+		msgType = "warning"
+	case parser.MsgError:
+		msgType = "error"
+	}
+	return map[string]any{
+		"type":  msgType,
+		"msg":   msg.Msg,
+		"start": msg.Position.Offset,
+		"end":   msg.Position.Offset + msg.Position.Len,
+	}
+}
+
 func pWrap(this js.Value, args []js.Value) any {
 	input := args[0].String()
 	result := map[string]any{
-		"errors": []any{},
-		"ast":    "",
+		"ast": "",
 	}
-	root, err := parseAQL(input)
+	messages := []any{}
+	root, pmessages, err := parseAQL(input)
 	if err != nil {
-		errors := []any{}
-		errors = append(errors, errConvert(err))
-		result["errors"] = errors
-	} else {
-		b, _ := json.MarshalIndent(root, "", "  ")
-		result["ast"] = string(b)
+		messages = append(messages, errConvert(err, input))
 	}
+	if len(pmessages) > 0 {
+		for _, m := range pmessages {
+			messages = append(messages, msgConvert(m, input))
+		}
+	}
+	if root != "" {
+		result["ast"] = root
+	}
+	result["messages"] = messages
 	return result
 }
 

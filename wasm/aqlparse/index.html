@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <title>AQL Wasm parser example</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
         <link rel="stylesheet" href="hwt.css">
         <link rel="stylesheet" href="style.css">
@@ -33,32 +34,60 @@
         <div>
         <textarea class="query" spellcheck="false"></textarea>
         </div>
+        <div id="messages"></div>
         <output id="output" class="ast">
         </output>
     </body>
     <script>
+        const msgicon = {
+            "warning": "warning",
+            "hint":    "brain",
+            "error":   "times-circle"
+        };
+        function newMsg(msgType, content) {
+            return `<div class="alert alert-${msgType} alert-white rounded"><div class="icon"><i class="fa fa-${msgicon[msgType]}"></i></div><alerttitle>${msgType}</alerttitle> ${content}</div>`
+        }
         async function setup() {
             await isReady;
             let aqlUpdate = function() {
                 let input = $(".query").val();
                 let pos = [];
                 if (input.length === 0) {
-                    $("output").text(" ").removeClass("error").addClass("ast");
+                    //$("output").text(" ").removeClass("error").addClass("ast");
+                    $("output").text(" ")
+                    $("#messages").empty();
+                    $("#messages").hide();
                     return [];
                 }
                 let result = parseAQL(input);
-                if (result.errors.length > 0) {
-                    $("output").text("").removeClass("ast").addClass("error");
+                if (result.messages.length > 0) {
+                    $("#messages").empty();
+                    //$("output").text("").removeClass("ast").addClass("error");
+                    $("output").text("");
+                    $("#messages").show();
                     let i = 0;
-                    while (i < result.errors.length) {
-                        if ('start' in result.errors[i]) {
-                            pos.push([result.errors[i].start, result.errors[i].end]);
+                    let message;
+                    while (i < result.messages.length) {
+                        message=result.messages[i];
+                        if ('start' in message) {
+                            pos.push(
+                                {
+                                    "highlight":[message.start, message.end],
+                                    "classname":message.type
+                                }
+                            );
+                            //pos.push([result.errors[i].start, result.errors[i].end]);
                         }
-                        $("output").append(document.createTextNode(result.errors[i].msg));
+                        //$("output").append(document.createTextNode(result.errors[i].msg+"\n"));
+                        $("#messages").append(newMsg(message.type, message.msg));
+                        //$("output").append("<span class='"+message.type+"'>"+message.msg+'</span></br>');
                         i++;
                     }
                 } else {
-                    $("output").text(result.ast).removeClass("error").addClass("ast");
+                    //$("output").text(result.ast).removeClass("error").addClass("ast");
+                    $("#messages").empty();
+                    $("#messages").hide();
+                    $("output").text(result.ast);
                 }
                 return pos;
             }
