@@ -1,4 +1,0 @@
-T match if in list
-text.name:("bob", "jim", "Andy")
-F no match if not in list
-text.name:("bob", "jim")

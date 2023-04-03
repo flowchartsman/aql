@@ -9,36 +9,97 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-func getValues(path []string, parents ...*fastjson.Value) []*fastjson.Value {
-	var testVals []*fastjson.Value
-	for _, p := range parents {
-		// get current path segment
-		v := p.Get(path[0])
-		if v == nil {
-			// nothing found, return
+type field struct {
+	// offsets when possible
+	values []*fastjson.Value
+}
+
+// TODO: cache paths
+func getField(path []string, root *fastjson.Value) *field {
+	values := getValues(path, root)
+	return &field{
+		values: values,
+	}
+}
+
+func (f *field) scalarValues() []*fastjson.Value {
+	var out []*fastjson.Value
+	for _, v := range f.values {
+		switch v.Type() {
+		case fastjson.TypeObject:
+			continue
+		case fastjson.TypeArray:
+			for _, av := range v.GetArray() {
+				switch av.Type() {
+				case fastjson.TypeObject, fastjson.TypeArray:
+					continue
+				default:
+					out = append(out, av)
+				}
+			}
+		default:
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func (f *field) listValues() []*fastjson.Value {
+	var out []*fastjson.Value
+	for _, v := range f.values {
+		if v.Type() == fastjson.TypeArray {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+type valuepath []string
+
+func (vp valuepath) bottom() bool {
+	return len(vp) == 1
+}
+
+func (vp valuepath) next() valuepath {
+	if vp.bottom() {
+		return nil
+	}
+	return vp[1:]
+}
+
+func (vp valuepath) current() string {
+	return vp[0]
+}
+
+// possible optimization: if a field is referenced only in an exists query,
+// getValues can return early
+func getValues(path valuepath, value *fastjson.Value) (fieldValues []*fastjson.Value) {
+	var outputValues []*fastjson.Value
+
+	switch value.Type() {
+	case fastjson.TypeObject:
+		// looking for a path segment in an object, so look for that key
+		child := value.Get(path.current())
+		if child == nil {
 			return nil
 		}
-		// found an array
-		if v.Type() == fastjson.TypeArray {
-			if len(path) == 1 {
-				// if bottomed out, return all items in the array for comparisons
-				testVals = append(testVals, v.GetArray()...)
-			} else {
-				// otherwise, recurse scan all items for the next path segment
-				testVals = append(testVals, getValues(path[1:], v.GetArray()...)...)
-			}
-		} else {
-			// found something else
-			if len(path) == 1 {
-				// if bottomed out, add it
-				testVals = append(testVals, v)
-			} else {
-				// otherwise drill down
-				testVals = append(testVals, getValues(path[1:], v)...)
+		// We found the value, and this is the last path segment, go ahead
+		// and return it.
+		if path.bottom() {
+			return []*fastjson.Value{child}
+		}
+		// otherwise drill down on the next value in the chain
+		outputValues = append(outputValues, getValues(path.next(), child)...)
+	case fastjson.TypeArray:
+		// looking for a path segment in an array, so look at every item, at
+		// this same level.
+		for _, child := range value.GetArray() {
+			if child.Type() == fastjson.TypeObject {
+				outputValues = append(outputValues, getValues(path, child)...)
 			}
 		}
 	}
-	return testVals
+	return outputValues
 }
 
 // TODO: overload found to report type data for stat tracking
@@ -46,10 +107,6 @@ func getStringVal(v *fastjson.Value) (stringVal string, isStringy bool) {
 	switch v.Type() {
 	case fastjson.TypeString:
 		return string(v.GetStringBytes()), true
-	case fastjson.TypeFalse:
-		return "false", true
-	case fastjson.TypeTrue:
-		return "true", true
 	case fastjson.TypeNumber:
 		return strconv.FormatFloat(v.GetFloat64(), 'f', -1, 64), true
 	}
@@ -82,6 +139,9 @@ func getBoolVal(v *fastjson.Value) (boolVal bool, found bool) {
 }
 
 func getDatetimeVal(v *fastjson.Value) (intVal int64, found bool) {
+	// TODO: tighten this up for numstrings. Probably want to be more careful
+	// about what we consider a date with how flexible dateparse is. Maybe a
+	// special getStringVal() that only accepts int-like unix epochs.
 	sv, ok := getStringVal(v)
 	if !ok {
 		return 0, false

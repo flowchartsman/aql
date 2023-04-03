@@ -7,12 +7,19 @@ import (
 	"unicode/utf8"
 )
 
-// TODO: wcString ...string (combining string search regexp)
+// TODO: coalesce wcString ...string (combining string search regexp)
+// TODO: detect crap wildcards like "foo**"
+// esp w/unicode
+// normalize spaces. fields->regexp
 func stringSearchRegexp(wcString string) *regexp.Regexp {
 	wcString = strings.ToLower(wcString)
 	wcRunes := []rune(wcString)
 	var buf bytes.Buffer
-	buf.WriteString(`(?i)\b`)
+	isASCII := isASCII(wcString)
+	buf.WriteString(`(?i)`)
+	if isASCII {
+		buf.WriteString(`\b`)
+	}
 	var accum bytes.Buffer
 	for i := 0; i < len(wcRunes); i++ {
 		switch wcRunes[i] {
@@ -32,7 +39,7 @@ func stringSearchRegexp(wcString string) *regexp.Regexp {
 			case '?':
 				buf.WriteString(`.`)
 			case '*':
-				buf.WriteString(`.*`)
+				buf.WriteString(`.*?`)
 			}
 			accum.Reset()
 			continue
@@ -41,7 +48,9 @@ func stringSearchRegexp(wcString string) *regexp.Regexp {
 	}
 	// write whatever remains in the accumulator
 	buf.WriteString(regexp.QuoteMeta(accum.String()))
-	buf.WriteString(`\b`)
+	if isASCII {
+		buf.WriteString(`\b`)
+	}
 	return regexp.MustCompile(buf.String())
 }
 

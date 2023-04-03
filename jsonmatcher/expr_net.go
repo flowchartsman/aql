@@ -4,18 +4,16 @@ import (
 	"net/netip"
 	"regexp"
 	"strings"
-
-	"github.com/valyala/fastjson"
 )
 
 var getNets = regexp.MustCompile(`(?:\d{1,3}\.){3}\d{1,3}(?:/\d{1,2})?`)
 
-type netMatcher struct {
+type exprNet struct {
 	value netip.Prefix
 }
 
-func (n *netMatcher) matches(values []*fastjson.Value) bool {
-	for _, v := range values {
+func (e *exprNet) matches(field *field) bool {
+	for _, v := range field.scalarValues() {
 		sv, ok := getStringVal(v)
 		if !ok {
 			continue
@@ -31,7 +29,7 @@ func (n *netMatcher) matches(values []*fastjson.Value) bool {
 					// report incorrect field
 					continue
 				}
-				if n.value.Overlaps(netblock) {
+				if e.value.Overlaps(netblock) {
 					return true
 				}
 			// would add port awareness here if needed
@@ -42,7 +40,7 @@ func (n *netMatcher) matches(values []*fastjson.Value) bool {
 				if err != nil {
 					continue
 				}
-				if n.value.Contains(netaddr) {
+				if e.value.Contains(netaddr) {
 					return true
 				}
 			}

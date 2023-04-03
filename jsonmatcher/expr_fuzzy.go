@@ -1,28 +1,27 @@
 package jsonmatcher
 
 import (
-	"github.com/valyala/fastjson"
 	"golang.org/x/text/language"
 	"golang.org/x/text/search"
 )
 
-type fuzzyMatcher struct {
+type exprFuzzy struct {
 	pat *search.Pattern
 }
 
-func newFuzzyMatcher(str string) *fuzzyMatcher {
-	return &fuzzyMatcher{
+func newExprFuzzy(str string) *exprFuzzy {
+	return &exprFuzzy{
 		pat: search.New(language.Und, search.Loose).CompileString(str),
 	}
 }
 
-func (s *fuzzyMatcher) matches(values []*fastjson.Value) bool {
-	for _, v := range values {
+func (e *exprFuzzy) matches(field *field) bool {
+	for _, v := range field.scalarValues() {
 		str, ok := getStringVal(v)
 		if !ok {
 			continue
 		}
-		start, _ := s.pat.IndexString(str)
+		start, _ := e.pat.IndexString(str)
 		if start >= 0 {
 			return true
 		}

@@ -2,99 +2,107 @@ package jsonmatcher
 
 import "github.com/valyala/fastjson"
 
-// TODO: Allow errors to bubble up from `matches`.
-type matcherNode interface {
-	matches(value *fastjson.Value) bool
-	stats() *StatsNode
+type statsProvider interface {
+	stats() *MatchStats
 }
 
-type boolNode struct {
-	and bool
-	left,
-	right matcherNode
-	nodeStats *nodeStats
+type boolNode interface {
+	statsProvider
+	// result() (bool, error)
+	result(*fastjson.Value) bool
 }
 
-func (b *boolNode) matches(value *fastjson.Value) bool {
-	matched := false
-	if b.and {
-		matched = b.left.matches(value) && b.right.matches(value)
-	} else {
-		matched = b.left.matches(value) || b.right.matches(value)
-	}
-	if b.nodeStats != nil {
-		b.nodeStats.mark(matched)
-	}
-	return matched
+type andNode struct {
+	left, right boolNode
+	nodeStats   *nodeStats
 }
 
-func (b *boolNode) stats() *StatsNode {
-	if b.nodeStats == nil {
-		return nil
+func (a *andNode) result(root *fastjson.Value) bool {
+	result := a.left.result(root) && a.right.result(root)
+	if a.nodeStats != nil {
+		a.nodeStats.mark(result)
 	}
-	return b.nodeStats.toStatsNode(b.left, b.right)
+	return result
+}
+
+func (a *andNode) stats() *MatchStats {
+	return a.nodeStats.toStatsNode()
+}
+
+type orNode struct {
+	left, right boolNode
+	nodeStats   *nodeStats
+}
+
+func (o *orNode) result(root *fastjson.Value) bool {
+	result := o.left.result(root) || o.right.result(root)
+	if o.nodeStats != nil {
+		o.nodeStats.mark(result)
+	}
+	return result
+}
+
+func (o *orNode) stats() *MatchStats {
+	return o.nodeStats.toStatsNode()
 }
 
 type notNode struct {
-	sub       matcherNode
+	sub       boolNode
 	nodeStats *nodeStats
 }
 
-func (n *notNode) matches(value *fastjson.Value) bool {
-	matched := !n.sub.matches(value)
+func (n *notNode) result(root *fastjson.Value) bool {
+	result := !n.sub.result(root)
 	if n.nodeStats != nil {
-		n.nodeStats.mark(matched)
+		n.nodeStats.mark(result)
 	}
-	return matched
+	return result
 }
 
-func (n *notNode) stats() *StatsNode {
-	if n.nodeStats == nil {
-		return nil
-	}
-	return n.nodeStats.toStatsNode(n.sub)
+func (n *notNode) stats() *MatchStats {
+	return n.nodeStats.toStatsNode()
 }
 
-type subdocNode struct {
-	prefix    []string
-	sub       matcherNode
-	nodeStats *nodeStats
-}
+// type subdocNode struct {
+// 	prefix    []string
+// 	sub       matcherNode
+// 	nodeStats *nodeStats
+// }
 
-func (s *subdocNode) matches(value *fastjson.Value) bool {
-	rootDocs := getValues(s.prefix, value)
-	matched := false
-	for _, rootDoc := range rootDocs {
-		if s.sub.matches(rootDoc) {
-			matched = true
-			break
-		}
-	}
-	if s.nodeStats != nil {
-		s.nodeStats.mark(matched)
-	}
-	return matched
-}
+// func (s *subdocNode) matches(value *fastjson.Value) bool {
+// 	rootDocs := getValues(s.prefix, value)
+// 	matched := false
+// 	for _, rootDoc := range rootDocs {
+// 		if s.sub.matches(rootDoc) {
+// 			matched = true
+// 			break
+// 		}
+// 	}
+// 	if s.nodeStats != nil {
+// 		s.nodeStats.mark(matched)
+// 	}
+// 	return matched
+// }
 
-func (s *subdocNode) stats() *StatsNode {
-	if s.nodeStats == nil {
-		return nil
-	}
-	return s.nodeStats.toStatsNode(s.sub)
-}
+// func (s *subdocNode) stats() *StatsNode {
+// 	if s.nodeStats == nil {
+// 		return nil
+// 	}
+// 	return s.nodeStats.toStatsNode(s.sub)
+// }
 
 type exprNode struct {
 	path      []string
-	matchers  []matcher
+	exprs     []fieldExpr
 	nodeStats *nodeStats
 }
 
-func (e exprNode) matches(value *fastjson.Value) bool {
+func (e exprNode) result(root *fastjson.Value) bool {
 	matched := false
-	testValues := getValues(e.path, value)
-	if len(testValues) > 0 {
-		for _, m := range e.matchers {
-			if m.matches(testValues) {
+	field := getField(e.path, root)
+	if len(field.values) > 0 {
+		for _, m := range e.exprs {
+			if m.matches(field) {
 				matched = true
 				break
 			}
@@ -107,7 +115,7 @@ func (e exprNode) matches(value *fastjson.Value) bool {
 	return matched
 }
 
-func (e exprNode) stats() *StatsNode {
+func (e exprNode) stats() *MatchStats {
 	if e.nodeStats == nil {
 		return nil
 	}

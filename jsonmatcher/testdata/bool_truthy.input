@@ -1,0 +1,33 @@
+T true is true
+attributes.nice:true
+T false is false
+attributes.dead:false
+F non-booleans are neither true nor false
+number.int:true OR number.int:false
+
+T bool true is truthy
+attributes.nice:~true
+T string "true" is truthy
+attributes.fun:~true
+T all strings but empty and "0" are truthy
+text.name:~true AND text.description:~true
+T all numeric values but zero are truthy
+number.int:~true AND number.float:~true AND attributes.ternary:~true
+
+T bool false is falsy
+attributes.dead:~false
+T string "false" is falsy
+attributes.enjoys_excessive_tests:~false
+T string "0" is falsy
+number.zero:~false
+T numeric 0 is falsy
+attributes.killer_robot:~false
+T empty string is falsy
+attributes."not specified":~false
+T explicit null is falsy
+attributes.buddhanature:~false
+
+F non-existant is neither truthy nor falsy
+attributes.nope:~true OR attributes.nope:~false
+F exists is neither truthy nor falsy
+text:~true OR test:~false

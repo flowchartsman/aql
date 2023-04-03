@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -29,6 +30,12 @@ func TestMatcher(t *testing.T) {
 			for _, st := range subtests {
 				t.Run(st.name, func(t *testing.T) {
 					t.Logf(st.query)
+					if st.skip {
+						t.SkipNow()
+					}
+					if strings.TrimSpace(st.query) == "" {
+						t.Fatalf("empty test")
+					}
 					matcher, _, err := NewMatcher(st.query)
 					if err != nil {
 						t.Fatalf("unexpected error: %v", err)
@@ -50,9 +57,12 @@ type queryTest struct {
 	expect bool
 	name   string
 	query  string
+	skip   bool
 	//file string
 	//line string
 }
+
+var testMarker = regexp.MustCompile(`^[TFS] `)
 
 func getTests(filename string) ([]queryTest, error) {
 	var out []queryTest
@@ -61,32 +71,40 @@ func getTests(filename string) ([]queryTest, error) {
 		return nil, err
 	}
 	lines := strings.Split(string(file), "\n")
-	name := ""
-	expect := false
+	var nextTest queryTest
 	for lineno, line := range lines {
 		if line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "T ") || strings.HasPrefix(line, "F ") {
-			if name != "" {
+		if testMarker.MatchString(line) {
+			if nextTest.name != "" {
 				return nil, fmt.Errorf("unexpected name at line %d", lineno+1)
 			}
-			expect = false
-			if line[0] == 'T' {
-				expect = true
-			}
-			name = line[2:]
-		} else {
+			name := line[2:]
 			if name == "" {
-				return nil, fmt.Errorf("expected name at line %d", lineno+1)
+				return nil, fmt.Errorf("empty name at line %d", lineno+1)
 			}
-			out = append(out, queryTest{
-				name:   name,
-				expect: expect,
-				query:  line,
-			})
-			name = ""
+			nextTest = queryTest{
+				name: name,
+			}
+			switch line[0] {
+			case 'T':
+				nextTest.expect = true
+			case 'F':
+				nextTest.expect = false
+			case 'S':
+				nextTest.expect = false
+				nextTest.skip = true
+			}
+			continue
 		}
+
+		if nextTest.name == "" {
+			return nil, fmt.Errorf("unnamed test at line %d", lineno+1)
+		}
+		nextTest.query = line
+		out = append(out, nextTest)
+		nextTest = queryTest{}
 	}
 	return out, nil
 }

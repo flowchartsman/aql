@@ -7,7 +7,7 @@ import (
 
 // Matcher performs an AQL query against JSON to see if it matches
 type Matcher struct {
-	root  matcherNode
+	root  boolNode
 	ppool fastjson.ParserPool
 	// fieldstats map[string]FieldStats
 }
@@ -36,17 +36,17 @@ func (m *Matcher) Match(json []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return m.root.matches(doc), nil
+	return m.root.result(doc), nil
 }
 
 // MatchParsed allows matching on an already-parsed (and presumably validated)
 // *fastjson.Value. It is the caller's responsibility to ensure that the parser
 // is not re-used during this call.
 func (m *Matcher) MatchParsed(doc *fastjson.Value) (bool, error) {
-	return m.root.matches(doc), nil
+	return m.root.result(doc), nil
 }
 
-func (m *Matcher) Stats() *StatsNode {
+func (m *Matcher) Stats() *MatchStats {
 	return m.root.stats()
 }
 

@@ -3,12 +3,18 @@ date.fullDate:<1980-01-01
 
 T fullDate field gt fullDate val
 date.fullDate:>1970-01-01
+T fullDate field gte fullDate val
+date.fullDate:>=1970-01-01
 
 T dateTime field lt fullDate val
 date.dateTime:<1980-01-01
+T dateTime field lte fullDate val
+date.dateTime:<=1980-01-01
 
 T interpreted short date field lt fullDate val
 date.shortDate:<1980-01-01
+T fulldate eq interpreted short datae
+date.shortDate:1970-01-02
 
 T dateTime field lt dateTime val
 date.dateTime:<1970-01-02T15:53:34+00:00
@@ -23,3 +29,12 @@ T fullDate field between two fulldate vals
 date.fullDate:><(1970-01-01,1970-01-03)
 F fullDate field not between two fulldate vals
 date.fullDate:><(1970-01-03,1970-01-04)
+
+F non-date string doesn't match anything
+text.name:><(1970-01-02,4000-01-02)
+S numeric doesn't match anything
+number.int:><(1970-01-02,4000-01-02)
+F non-string/num doesn't match anything
+attributes.nice:><(1970-01-02,4000-01-02) OR attributes.dead:><(1970-01-02,4000-01-02)
+F undefined date doesn't match anything
+date.not_there:><(1970-01-02,4000-01-02)

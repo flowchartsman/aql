@@ -4,33 +4,32 @@ import (
 	"fmt"
 
 	"github.com/flowchartsman/aql/parser/ast"
-	"github.com/valyala/fastjson"
 )
 
-type boolMatcher struct {
+type exprEqBool struct {
 	value bool
 	op    ast.Op
 }
 
-func (s *boolMatcher) matches(values []*fastjson.Value) bool {
-	for _, v := range values {
+func (e *exprEqBool) matches(field *field) bool {
+	for _, v := range field.scalarValues() {
 		var (
 			bv bool
 			ok bool
 		)
-		switch s.op {
+		switch e.op {
 		case ast.EQ:
 			bv, ok = getBoolVal(v)
 		case ast.SIM:
 			bv, ok = getTruthyVal(v)
 		default:
 			// backstop
-			panic(fmt.Sprintf("invalid op for boolean comparison: %s", s.op))
+			panic(fmt.Sprintf("invalid op for boolean comparison: %s", e.op))
 		}
 		if !ok {
 			continue
 		}
-		if bv == s.value {
+		if bv == e.value {
 			return true
 		}
 	}

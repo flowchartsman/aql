@@ -6,7 +6,7 @@ import (
 	"github.com/flowchartsman/aql/parser/ast"
 )
 
-func betweenMatcher(RVals []ast.Val) matcher {
+func exprBetween(RVals []ast.Val) fieldExpr {
 	if len(RVals) != 2 {
 		// backstop
 		panic(fmt.Sprintf("betweenMatcher expects two constant values - got %d", len(RVals)))
@@ -29,14 +29,14 @@ func betweenMatcher(RVals []ast.Val) matcher {
 			constantValues[1] = float64(v.Value())
 		}
 
-		return &floatMatcher{
+		return &exprFloat{
 			values: constantValues,
 			op:     ast.BET,
 		}
 	case *ast.TimeVal:
 		// datetime between
 		// 2nd argument guaranteed by validator
-		return &datetimeMatcher{
+		return &exprDatetime{
 			values: [2]int64{
 				RVals[0].(*ast.TimeVal).Value().UnixNano(),
 				RVals[1].(*ast.TimeVal).Value().UnixNano(),

@@ -4,5 +4,87 @@ T gt
 number.int:>0
 F !gt
 number.int:>1
-T ge
+T gte
 number.int:>=0
+T lt
+number.int:<2
+T lte
+number.int:<=1
+
+T float field eq float val
+number.float:1.1
+
+
+T int between int and int
+number.int:><(0,2)
+T int between int and int inclusive left
+number.int:><(1,2)
+T int between int and int inclusive right
+number.int:><(1,2)
+F int not between int and int
+number.int:><(2,3)
+
+T int between int and float
+number.int:><(0,1.2)
+T int between int and float inclusive left
+number.int:><(1,1.2)
+T int between int and float inclusive right
+number.int:><(0,1.0)
+F int not between int and float
+number.int:><(2,2.1)
+
+T int between float and int
+number.int:><(0.9,2)
+T int between float and int inclusive left
+number.int:><(1.0,2)
+T int between float and int inclusive right
+number.int:><(0.999,1)
+F int not between float and int
+number.int:><(1.001,2)
+
+T int between float and float
+number.int:><(0.9,1.1)
+T int between float and float inclusive left
+number.int:><(1.0,1.1)
+T int between float and float inclusive right
+number.int:><(0.999,1.0)
+F int not between float float
+number.int:><(1.001,1.002)
+
+
+T float between int and int
+number.float:><(0,2)
+F float not between int and int
+number.float:><(2,3)
+
+T float between int and float
+number.float:><(0,1.2)
+T float between int and float inclusive right
+number.float:><(0,1.1)
+F float not between int and float
+number.float:><(0,1.0)
+
+T float between float and int
+number.float:><(0.9,2)
+T float between float and int inclusive left
+number.float:><(1.1,2)
+F float not between float and int
+number.float:><(1.2,2)
+
+T float between float and float
+number.float:><(0.9,1.2)
+T float between float and float inclusive left
+number.float:><(1.1,1.2)
+T float between float and float inclusive right
+number.float:><(0.999,1.1)
+F float not between float float
+number.float:><(1.001,1.002)
+
+T numeric string compares
+number.intstr:><(0,2)
+F non number/string does not compare
+attributes.nice:<0 OR attributes.nice:>0
+F invalid numeric string does not compare
+number.not:<0 OR number.not:>0
+F NaN does not compare
+attributes.nice:<0 OR attributes.nice:>0

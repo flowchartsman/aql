@@ -4,3 +4,14 @@ F missing field does not match
 text.greatest_fear:exists
 T negated exists for missing matches
 !text.greatest_fear:exists
+
+T explicit null matches null
+attributes.buddhanature:null
+F list is not null even if has null member
+net.observed:null
+T array exists
+quotes:exists
+T object exists
+net:exists
+T nested object exists
+net.router:exists

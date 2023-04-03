@@ -24,13 +24,12 @@ func newBuilder(withStats bool) *builder {
 	return b
 }
 
-func (b *builder) build(node ast.Node) matcherNode {
+func (b *builder) build(node ast.Node) boolNode {
 	// make a set of expectedtypes during build to build fieldstats
 	// var matcher matcherNode
 	switch n := node.(type) {
 	case *ast.AndNode:
-		node := &boolNode{
-			and:   true,
+		node := &andNode{
 			left:  b.build(n.Left),
 			right: b.build(n.Right),
 		}
@@ -41,8 +40,7 @@ func (b *builder) build(node ast.Node) matcherNode {
 		}
 		return node
 	case *ast.OrNode:
-		node := &boolNode{
-			and:   false,
+		node := &orNode{
 			left:  b.build(n.Left),
 			right: b.build(n.Right),
 		}
@@ -92,28 +90,28 @@ func (b *builder) build(node ast.Node) matcherNode {
 		switch n.Op {
 		// unary
 		case ast.EXS:
-			node.matchers = []matcher{
-				&existsMatcher{},
+			node.exprs = []fieldExpr{
+				&exprExists{},
 			}
 		case ast.NUL:
-			node.matchers = []matcher{
-				&nullMatcher{},
+			node.exprs = []fieldExpr{
+				&exprNull{},
 			}
 		// binary:
 		case ast.LT, ast.LTE, ast.GT, ast.GTE:
-			node.matchers = []matcher{
-				numericMatcher(n.Op, n.RVals),
+			node.exprs = []fieldExpr{
+				exprNumeric(n.Op, n.RVals),
 			}
 		// ternary
 		case ast.BET:
-			node.matchers = []matcher{
-				betweenMatcher(n.RVals),
+			node.exprs = []fieldExpr{
+				exprBetween(n.RVals),
 			}
 		// n-ary
 		case ast.EQ:
-			node.matchers = eqMatcher(n.RVals)
+			node.exprs = exprEQ(n.RVals)
 		case ast.SIM:
-			node.matchers = simMatcher(n.RVals)
+			node.exprs = exprSim(n.RVals)
 		default:
 			// backstop
 			panic(fmt.Sprintf("undefined operation: [%s]", n.Op))

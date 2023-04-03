@@ -12,3 +12,7 @@ T unicode alias
 text.description:/\p{Han}{3}/
 T escaped frontslashes
 date.shortDate:/^\d+\/\d+\/\d+/
+F non-string/number does not compare
+attributes.dead:/./ OR attributes.buddhanature:/./
+T sim allowed for now
+text.name:~/(?i)^andy/

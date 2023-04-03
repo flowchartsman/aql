@@ -2,11 +2,11 @@ package jsonmatcher
 
 import "go.uber.org/atomic"
 
-type StatsNode struct {
-	NodeName     string       `json:"node_name"`
-	TimesChecked int64        `json:"times_checked"`
-	TimesMatched int64        `json:"times_matched"`
-	Children     []*StatsNode `json:"children,omitempty"`
+type MatchStats struct {
+	NodeName     string        `json:"node_name"`
+	TimesChecked int64         `json:"times_checked"`
+	TimesMatched int64         `json:"times_matched"`
+	Children     []*MatchStats `json:"children,omitempty"`
 }
 
 // TODO: When MarshalScalar/UnmarshalScalar land, these types can be replaced
@@ -26,14 +26,14 @@ func (ns *nodeStats) mark(matched bool) {
 	}
 }
 
-func (ns *nodeStats) toStatsNode(children ...matcherNode) *StatsNode {
-	sn := &StatsNode{
+func (ns *nodeStats) toStatsNode(children ...boolNode) *MatchStats {
+	sn := &MatchStats{
 		NodeName:     ns.nodeName,
 		TimesChecked: ns.timesChecked.Load(),
 		TimesMatched: ns.timesMatched.Load(),
 	}
 	if len(children) > 0 {
-		sn.Children = make([]*StatsNode, 0, len(children))
+		sn.Children = make([]*MatchStats, 0, len(children))
 		for _, c := range children {
 			sn.Children = append(sn.Children, c.stats())
 		}
