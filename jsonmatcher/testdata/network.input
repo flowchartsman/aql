@@ -1,0 +1,22 @@
+T valid IP contained by CIDR query
+net.router:192.168.1.0/24
+F valid IP not contained by CIDR query
+net.router:192.168.2.0/24
+T IP in string contained by CIDR query
+net.observed:192.168.1.0/24
+T CIDR in string contains IP query
+net.observed:10.10.1.2
+T CIDR in string overlaps CIDR query
+net.observed:10.0.0.0/8
+F no IPs in strings contained by CIDR query
+net.observed:11.0.0.0/8
+F non-IP not contained by global CIDR query
+text.name:0.0.0.0/0
+F bad IP not contained by global CIDR query
+net.not_ip:0.0.0.0/0
+F bad CIDR does not overlap with global CIDR query
+net.not_cidr:0.0.0.0/0
+F undefined not matched
+net.not_there:0.0.0.0/0
+F non-string not matched
+number.int:0.0.0.0/0

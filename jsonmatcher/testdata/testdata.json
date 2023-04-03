@@ -1,0 +1,91 @@
+{
+    "date": {
+        "fullDate": "1970-01-02",
+        "dateTime": "1970-01-02T15:53:33+00:00",
+        "shortDate": "1/2/70",
+        "writtenDate": "January 1st, 1970"
+    },
+    "text": {
+        "name": "Andy",
+        "description": "大懒虫",
+        "likes": [
+            "Pizza (food)",
+            "Pig (dog)",
+            "辣椒油 (food)",
+            "Rolf (dog)",
+            "Kirby (cat)"
+        ],
+        "multiply": "1*1"
+    },
+    "number": {
+        "int": 1,
+        "intstr": "1",
+        "float": 1.1,
+        "floatstr": "1.1",
+        "not": "hello",
+        "zero": "0",
+        "NaN": "NaN"
+    },
+    "attributes": {
+        "nice": true,
+        "dead": false,
+        "fun": "true",
+        "enjoys_excessive_tests": "false",
+        "likes_binary": 1,
+        "killer_robot": 0,
+        "ternary": 3,
+        "not specified": "",
+        "buddhanature": null
+    },
+    "net": {
+        "router": "192.168.1.0",
+        "observed": [
+            "attempted access from 192.168.1.1",
+            "received bad netblock 10.10.1.0/24 from blocklist",
+            null
+        ],
+        "not_ip": "192.168.500.0",
+        "not_cidr": "192.168.1.0/33"
+    },
+    "measurements": [
+        1,
+        2,
+        3,
+        4,
+        -1.1,
+        2,
+        3,
+        4
+    ],
+    "quotes": [
+        {
+            "quote": "The most disastrous thing that you can ever learn is your first programming language",
+            "source": "Alan Kay"
+        },
+        {
+            "quote": "If debugging is the process of removing software bugs, then programming must be the process of putting them in",
+            "source": "Edsger Dijkstra"
+        },
+        {
+            "quote": "As soon as I have got flying to perfection, I have got a scheme about a steam engine.",
+            "source": "Ada Lovelace"
+        }
+    ],
+    "arcade_scores": [
+        {
+            "game": "pacman",
+            "score": 1000,
+            "felt": "hopeful"
+        },
+        {
+            "game": "frogger",
+            "score": 5,
+            "felt": "indifferent"
+        },
+        {
+            "game": "pinbot",
+            "score": 45,
+            "felt": "uncoordinated"
+        }
+    ]
+}

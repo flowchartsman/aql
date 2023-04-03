@@ -9,3 +9,7 @@
 cmd/aqlgraph/aqlgraph
 cmd/aqltest/aqltest
 cmd/aqltest/*.json
+**/.DS_Store
+cmd/aqlgraph/query_graph.svg
+**/*.wasm
+**/*.wasm.gz

@@ -1,0 +1,18 @@
+T prefix string field match
+text.name:/^And/
+T suffix string field match
+text.name:/dy$/
+T infix string field match
+text.name:/nd/
+T case-insensitive match
+text.name:/(?i)^andy/
+F case-sensitive no match
+text.name:/^andy/
+T unicode alias
+text.description:/\p{Han}{3}/
+T escaped frontslashes
+date.shortDate:/^\d+\/\d+\/\d+/
+F non-string/number does not compare
+attributes.dead:/./ OR attributes.buddhanature:/./
+T sim allowed for now
+text.name:~/(?i)^andy/

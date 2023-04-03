@@ -1,11 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
-	"github.com/flowchartsman/aql/jsonquery"
+	"github.com/flowchartsman/aql/jsonmatcher"
 	"github.com/flowchartsman/aql/parser"
 )
 
@@ -15,19 +16,31 @@ func main() {
 		log.Fatal("Usage: aql 'EXPR' <json file>")
 	}
 
-	q, err := jsonquery.NewQuerier(os.Args[1])
+	m, err := jsonmatcher.NewMatcher(os.Args[1])
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error running query: %s", parser.PrettyErr(os.Args[1], err))
 	}
 
-	file, err := os.Open(os.Args[2])
+	if len(m.Messages()) > 0 {
+		for _, m := range parser.PrettyMessages(os.Args[1], m.Messages()...) {
+			log.Println(m)
+		}
+	}
+
+	input, err := os.ReadFile(os.Args[2])
 	if err != nil {
 		log.Fatalf("could not open file: %v", err)
 	}
 
-	result, err := q.Match(file)
+	result, err := m.Match(input)
 	if err != nil {
-		log.Fatalf("error running query: %s", parser.GetPrintableError(os.Args[1], err))
+		log.Fatal(err)
 	}
 	fmt.Println(result)
+	stats := m.Stats()
+	b, err := json.MarshalIndent(stats, "", "  ")
+	if err != nil {
+		log.Fatalf("error marshalling stats: %s", err)
+	}
+	fmt.Println(string(b))
 }

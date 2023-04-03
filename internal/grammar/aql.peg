@@ -1,0 +1,501 @@
+{
+package grammar
+
+import(
+    "unicode/utf8"
+
+    "github.com/flowchartsman/aql/parser/ast"
+)
+
+// TODO: 
+//   - stop removing stars in generated parser and just remove them later. This
+//     allows hinting for them instead, and prevents incorrect offsets in pos.
+//   - go back to value checking with a visitor. This lets operation errors be
+//     listed as messages, which will let parsing proceed, but highlight
+//     problems. Also simplifies parser. Will need error method added to
+//     MessageVisitor.
+//   - add the rule into ParseError message so that otherwise less-than helpful
+//     parse errors can simply state what's expected next. Eventually this can
+//     be used for autocompletion.
+//   - embed >1 parser errors from PEG so all positions can be retrieved (and
+//     displayed)
+//   - rename node types to line up AST more with convention (like expression,
+//     operation, etc)
+//   - attach position to all ast nodes
+//   - comments
+
+// ParseError is the exported error type for parsing errors with detailed information as to where they occurred
+type ParseError struct {
+    Position ast.Pos  `json:"position"`
+	Expected []string `json:"expected"`
+    Msg      string   `json:"message"`
+    List     []error
+}
+
+// helper method to exfiltrate pigeon's generated error type as a type that conforms to PositionErr
+func GetParseError(err error) *ParseError {
+	switch ev := err.(type) {
+	case errList:
+		if pe, ok := ev[0].(*parserError); ok {
+            toklen := 1
+            if te, ok := pe.Inner.(*tokenError); ok {
+                toklen = te.length
+            }
+			return &ParseError{
+                Position: ast.Pos{
+                    Line:   pe.pos.line,
+                    Col:    pe.pos.col,
+                    Offset: pe.pos.offset,
+                    Len:    toklen,
+                },
+				Msg:      pe.Inner.Error(),
+				Expected: pe.expected,
+			}
+		}
+	}
+	return &ParseError{
+        Position: ast.Pos{Offset: -1},
+        Msg:      err.Error(),
+    }
+}
+
+// Error Conforms to Error
+func (p *ParseError) Error() string {
+    return fmt.Sprintf("%d:%d(%d): %s", p.Position.Line, p.Position.Col, p.Position.Offset, p.Msg)
+}
+
+// Message is the raw message of the string
+func (p *ParseError) Message() string{
+    return p.Msg
+}
+
+// Pos conforms to Positioned
+func (p *ParseError) Pos() ast.Pos {
+    return p.Position
+}
+
+// helper to create an ast.Pos from c
+func getpos(c *current) ast.Pos {
+    return ast.Pos{
+        Line: c.pos.line,
+        Col: c.pos.col,
+        Offset: c.pos.offset,
+        Len: utf8.RuneCount(c.text),
+    }
+}
+
+type tokenError struct {
+    err error
+    length int
+}
+
+func (t *tokenError) Error() string{
+    return t.err.Error()
+}
+
+func tokErr(pos ast.Pos, err error) *tokenError {
+    return &tokenError{
+        err: err,
+        length: pos.Len,
+    }
+}
+
+func tokErrf(pos ast.Pos, msg string, v ...any) *tokenError {
+    return &tokenError{
+        err: fmt.Errorf(msg, v...),
+        length: pos.Len,
+    }
+}
+
+
+// pigeon helper method, sometimes you gotta do what you gotta do
+func toAny(v any) []any {
+	if v == nil {
+		return nil
+	}
+	return v.([]any)
+}
+
+// helper method to get individual tokens from their rule index
+func getTokens(first, rest any, idx int) []string {
+	out := []string{first.(string)}
+	restSl := toAny(rest)
+	for _, v := range restSl {
+		expr := toAny(v)
+		out = append(out, expr[idx].(string))
+	}
+	return out
+}
+
+// helper method to get label as string value
+func toString(label any) (string, error) {
+	var sb strings.Builder
+	value := label.([]any)
+	for _, i := range value {
+		if i == nil {
+			continue
+		}
+		switch b := i.(type) {
+		case []byte:
+			sb.WriteByte(b[0])
+		case string:
+			sb.WriteString(b)
+		case []any:
+			s, err := toString(i)
+			if err != nil {
+				return "", err
+			}
+			sb.WriteString(s)
+		default:
+			return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v", i, i)
+		}
+	}
+	return sb.String(), nil
+}
+// helper methods to remove legacy star syntax
+func removeStars(ss []string) []string {
+	for {
+		i := findStarIdx(ss)
+		if i < 0 {
+			break
+		}
+		ss = append(ss[:i], ss[i+1:]...)
+	}
+	return ss
+}
+
+func findStarIdx(ss []string) int {
+	for i, s := range ss {
+		if s == "*" {
+			return i
+		}
+	}
+	return -1
+}
+}
+
+/******
+*******
+GRAMMAR
+*******
+*******/
+
+Start <- query:Query EOF {
+    return query, nil
+}
+
+Query <- _ clause:OrClause _ {
+    return clause, nil
+}
+
+/****
+NODES
+*****/
+
+OrClause <- lhs:AndClause space logicalOR space rhs:OrClause {
+    return &ast.OrNode {
+        Left: lhs.(ast.Node),
+        Right: rhs.(ast.Node),
+    }, nil
+} / AndClause
+
+AndClause <- lhs:NotClause space logicalAND space rhs:AndClause {
+    return &ast.AndNode {
+        Left: lhs.(ast.Node),
+        Right: rhs.(ast.Node),
+    }, nil
+} / NotClause
+
+NotClause <- logicalNOT cmp:Comparison {
+    return &ast.NotNode {
+        Expr: cmp.(ast.Node),
+    }, nil
+} / Comparison
+
+// TODO: error clause for invalid op
+Comparison <- '(' _ query:OrClause _ ')'{
+    return query, nil
+} / field:Field _ ':' _ operation:opNoArgs {
+    return &ast.ExprNode{
+        Op:         operation.(ast.Op),
+        Field:      field.([]string),
+        Position:   getpos(c),
+    }, nil
+}
+/*
+  / field:Field _ '{' _ query:OrClause _ '}' {
+    return &ast.SubdocNode{
+        Field: field.([]string),
+        Expr:  query.(ast.Node),
+    }, nil
+} 
+*/
+  /  field:Field _ ':' _ operation:opComp? _ values:ValueList {
+    var opOut ast.Op
+    if operation == nil {
+        opOut = ast.EQ
+    } else {
+        opOut = operation.(ast.Op)
+    }
+    node := &ast.ExprNode{
+        Op:       opOut,
+        Field:    field.([]string),
+        RVals:    values.([]ast.Val),
+        Position: getpos(c),
+    }
+    return node, nil
+}
+
+/*****
+FIELDS
+******/
+
+//TODO add array specifier like foo.bar[*].baz[1]
+Field <- pieces:(FieldPiece ('.' FieldPiece)*) {
+    piecesSl := toAny(pieces)
+    if len (piecesSl) == 0 {
+        return nil, fmt.Errorf("empty field")
+    }
+    // remove stars for now, they are redundant legacy syntax
+    field := []string{piecesSl[0].(string)}
+    restSl := toAny(piecesSl[1])
+    for _, v := range restSl {
+        vSl := toAny(v)
+        field = append(field, vSl[1].(string))
+    }
+
+    return removeStars(field), nil
+}
+
+FieldPiece <- QuotedFieldPiece / UnquotedFieldPiece / Star
+
+UnquotedFieldPiece <- [a-z0-9_-]i+ {
+    return string(c.text), nil
+}
+
+QuotedFieldPiece <- qv:QuotedValue {
+    // intercept the ast node and just use it as a string for field pieces
+    return(qv.(*ast.StringVal).Value()), nil
+}
+
+// TODO: Remove Star
+Star <- '*' {
+    return "*", nil
+}
+
+/*****
+VALUES
+******/
+
+//ADD PROPER RANGE '[X TO Y]' range here or switch to full lucene
+ValueList <- '('_ first:Value rest:( _ ',' _ Value )* _ ')' {
+    out := []ast.Val{first.(ast.Val)}
+    restSl := toAny(rest)
+    if len(restSl) == 0 {
+        return nil, fmt.Errorf("unnecessary parenthesis for only one value")
+    }
+    for _, v := range restSl{
+        r := toAny(v)
+        out = append(out, r[3].(ast.Val))
+    }
+    return out, nil
+} / value:Value {
+    return []ast.Val{value.(ast.Val)}, nil
+}
+
+Value <- val:(QuotedValue / RegexValue / BareValue) {
+    return val.(ast.Val), nil
+} / [^ \n\t\r]+ {
+    if c.text[0] == ')' {
+        return nil, fmt.Errorf("unexpected closing parenthesis, expecting values")
+    }
+    return nil, fmt.Errorf("unknown type of value [%s] -- did you mean %q?", c.text, c.text)
+}
+
+/**********
+VALUE TYPES
+**********/
+
+QuotedValue <- '"' ( !EscapedChar . / '\\' EscapeSequence )* EndingQuote {
+    pos := getpos(c)
+    s, err := strconv.Unquote(string(c.text))
+    if err != nil {
+        return nil, tokErrf(pos, "invalid string: %s", err)
+    }
+    return ast.NewStringVal([]byte(s), pos)
+} //{errUntermStr} ErrUntermStr
+
+EndingQuote <- '"' / %{errUntermStr}
+
+EscapedChar <- [\x00-\x1f"\\]
+
+EscapeSequence <- SingleCharEscape / UnicodeEscape
+
+SingleCharEscape <- ["\\bfnrt]
+
+UnicodeEscape <- 'u' HexDigit HexDigit HexDigit HexDigit
+
+HexDigit <- [0-9a-f]i
+
+ValueChars <- [a-zA-Z0-9 !]
+
+RegexValue <- '/' RegexChar* EndingSlash {
+    pos := getpos(c)
+    c.text = bytes.Replace(c.text, []byte(`\/`), []byte(`/`), -1)
+    val, err := ast.NewRegexpVal(c.text, pos)
+    if err != nil {
+        return nil, tokErr(pos, err)
+    }
+    return val, nil
+} //{errUntermRegex} ErrUntermRegex
+RegexChar <- !( '/' / '\\' / EOL) . / '\\' RegexEscape
+RegexEscape <- !(EOL / EOF ) .
+
+EndingSlash <- '/' / %{errUntermRegex}
+
+//when adding BareValues, remember: longest rule first
+//TODO: error clause for invalid barevalues
+BareValue  <- Timestamp
+            / IPValue
+            / FloatValue
+            / IntValue
+            / BoolValue
+
+
+BoolValue <- ("false" / "true"){
+    return ast.NewBoolVal(c.text, getpos(c))
+}
+
+FloatValue <- '-'? [0-9]+ '.' [0-9]+ {
+    pos := getpos(c)
+    val, err := ast.NewFloatVal(c.text, getpos(c)) 
+    if err != nil {
+        return nil, tokErr(pos, err)
+    }
+    return val, nil
+}
+
+IntValue <- '-'? [0-9]+ {
+    return ast.NewIntVal(c.text, getpos(c))
+}
+
+
+IPValue <- Octet '.' Octet '.' Octet '.' Octet CIDRBlock? {
+    pos := getpos(c)
+    val, err := ast.NewNetVal(c.text, pos)
+    if err != nil{
+        return nil, tokErr(pos, err)
+    }
+    return val, nil
+}
+
+Octet <- [0-9][0-9]?[0-9]?
+
+CIDRBlock <- '/' [0-9][0-9]?
+
+/*RFC3339*/
+Timestamp <- (dateTime / fullDate) {
+    pos := getpos(c)
+    val, err := ast.NewTimeVal(c.text, pos)
+    if err != nil{
+        return nil, tokErr(pos, err)
+    }
+    return val, nil
+}
+
+/*TODO: DO FUNCS*/
+dateTime <- fullDate ("T"i / " ") fullTime
+fullDate <- dateFullyear '-' dateMonth '-' dateMday
+
+dateFullyear <- Digit4
+dateMonth <- Digit2
+dateMday <- Digit2
+timeHour <- Digit2
+timeMinute <- Digit2
+timeSecond <- Digit2
+timeSecfrac <- '.' [0-9]+
+timeNumoffset <- ('+' / '-') timeHour ':' timeMinute
+timeOffset <- "Z"i / timeNumoffset
+partialTime <- timeHour ':' timeMinute ':' timeSecond timeSecfrac?
+fullTime <- partialTime timeOffset
+Digit4 <- [0-9][0-9][0-9][0-9]
+Digit2 <- [0-9][0-9]
+
+/****************
+LOGICAL OPERATORS
+*****************/
+
+logicalOR <- "OR"
+
+logicalAND <- "AND"
+
+logicalNOT <- "NOT" space / '!' space?
+
+/*******************
+COMPARISON OPERATORS
+********************/
+
+opNoArgs <- ("exists" / "null"){
+    var opOut ast.Op
+    switch string(c.text) {
+    case "exists":
+        opOut = ast.EXS
+    case "null":
+        opOut = ast.NUL
+    }
+    return opOut, nil
+}
+
+opComp <- ("><" / "~" / [<>] '='?){
+    var opOut ast.Op
+    switch string(c.text) {
+    case "><":
+        opOut = ast.BET
+    case "~":
+        opOut = ast.SIM
+    case "<":
+        opOut = ast.LT
+    case "<=":
+        opOut = ast.LTE
+    case ">":
+        opOut = ast.GT
+    case ">=":
+        opOut = ast.GTE
+    }
+    return opOut, nil
+}
+
+//opCOMP <- (opCustom / "><" / "~" / [<>] '='?) {
+//opCustom <- '=' opname:[a-z]i+ '='{
+//    return toString(opname)
+//}
+
+/**********************
+WHITESPACE AND TERMINAL
+***********************/
+
+_ "whitespace" <- [ \n\t\r]*
+
+space <- [ \n\t\r]+
+
+EOL <- '\n'
+
+EOF = !.
+
+/*****************************
+TERMINAL ERROR HANDLING STATES
+******************************/
+
+ErrUntermStr <- #{
+    return errors.New(`unterminated string, check for missing closing ["] or unescaped [\]`)
+}
+
+ErrUntermRegex <- #{
+    return errors.New("unterminated regular expression, did you forget a closing '/'?")
+}
+
+/*
+ErrOp <- #{
+    return fmt.Errorf("invalid operator")
+}
+*/

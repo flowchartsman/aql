@@ -1,124 +1,129 @@
 package parser
 
-//go:generate pigeon -no-recover -o parser-gen.go aql.peg
+//go:generate pigeon -o parser-gen.go aql.peg
 
 import (
 	"fmt"
+	"io"
 	"strings"
+
+	"github.com/flowchartsman/aql/internal/grammar"
+	"github.com/flowchartsman/aql/parser/ast"
 )
 
-// NodeType represents the type of a node in the parse tree
-type NodeType int
+// ParseError is a detailed parser error.
+// It's a type alias to allow exporting the internal type from the generated code.
+type ParseError = grammar.ParseError
 
-// Node Types
-const (
-	_ NodeType = iota
-	NodeNot
-	NodeAnd
-	NodeOr
-	NodeTerminal
-)
-
-// Node is a node in the query parse tree
-type Node struct {
-	NodeType   NodeType
-	Comparison Comparison
-	Left       *Node
-	Right      *Node
+func ParseQuery(query string, options ...Option) (ast.Node, error) {
+	return ParseQueryReader(strings.NewReader(query), options...)
 }
 
-// Comparison is an individual comparision operation on a terminal node
-type Comparison struct {
-	Op     string
-	Field  []string
-	Values []string
-}
+func ParseQueryReader(r io.Reader, options ...Option) (ast.Node, error) {
+	opts := &ParserOpts{
+		visitors: []Visitor{
+			VisitorFunc(opValidator),
+		},
+	}
+	for _, o := range options {
+		o(opts)
+	}
+	v, err := grammar.ParseReader("", r, grammar.Debug(opts.debug))
+	if err != nil {
+		return nil, grammar.GetParseError(err)
+	}
 
-// ParseError is the exported error type for parsing errors with detailed information as to where they occurred
-type ParseError struct {
-	Inner    error    `json:"inner"`
-	Line     int      `json:"line"`
-	Column   int      `json:"column"`
-	Offset   int      `json:"offset"`
-	Prefix   string   `json:"prefix"`
-	Expected []string `json:"expected"`
-}
+	var root ast.Node
 
-// Error Conforms to Error
-func (p *ParseError) Error() string {
-	return p.Prefix + ": " + p.Inner.Error()
-}
-
-func getRootNode(v interface{}) (*Node, error) {
 	switch t := v.(type) {
 	case nil:
-		return nil, fmt.Errorf("parser returned nil output")
-	case *Node:
-		return t, nil
+		return nil, genericParseError("parser returned nil output")
+	case ast.Node:
+		root = t
 	default:
-		return nil, fmt.Errorf("parser returned unknown type: %T", t)
+		return nil, genericParseError(fmt.Sprintf("parser returned unknown type: %T", t))
 	}
-}
 
-// GetPrintableError returns a string suitable for printing to a terminal, replete with a handy caret indicator
-func GetPrintableError(query string, err error) string {
-	pe, ok := err.(*ParseError)
-	if !ok {
-		return err.Error()
-	}
-	var sb strings.Builder
-	lines := strings.Split(query, "\n")
-	badLine := lines[pe.Line-1]
-	sb.WriteString(err.Error() + "\n")
-	sb.WriteString(badLine + "\n")
-	if pe.Column > 0 {
-		sb.WriteString(strings.Repeat(`~`, pe.Column-1))
-	}
-	sb.WriteString("^\n")
-	return sb.String()
-}
+	// TODO Accumulate errors/messages from here on out and return them all.
 
-// unused, may be useful for other matches (blatently stolen from mailgun article on similar language)
-func toString(label interface{}) (string, error) {
-	var sb strings.Builder
-	value := label.([]interface{})
-	for _, i := range value {
-		if i == nil {
-			continue
-		}
-		switch b := i.(type) {
-		case []byte:
-			sb.WriteByte(b[0])
-		case string:
-			sb.WriteString(b)
-		case []interface{}:
-			s, err := toString(i)
-			if err != nil {
-				return "", err
+	for _, v := range opts.visitors {
+		err := walk(v, root)
+		if err != nil {
+			if perr, ok := err.(*ParseError); ok {
+				return nil, perr
 			}
-			sb.WriteString(s)
-		default:
-			return "", fmt.Errorf("unexpected type [%T] found in label interfaces: %+v", i, i)
+			return nil, genericParseError("validation failure: " + err.Error())
+		}
+		// Check to see if a MessageValidator had an error.
+		// TODO: allow all to return.
+		if mv, ok := v.(*MessageVisitor); ok {
+			if mv.tape.firstErr != nil {
+				return nil, mv.tape.firstErr.assErr()
+			}
 		}
 	}
-	return sb.String(), nil
+
+	// TODO: visitor to skip/count stars and warn here-ish.
+
+	// opV := newopValidator()
+	// ast.Walk(opV, root)
+	// if opV.Err() != nil {
+	// 	return nil, opV.Err()
+	// }
+
+	// warnW := newWarner(p.withWarnings)
+	// ast.Walk(warnW, root)
+	// if len(warnW.warnings) > 0 {
+	// 	if !p.withWarnings {
+	// 		return nil, warnW.warnings[0]
+	// 	}
+	// 	p.warnings = warnW.warnings
+	// }
+	return root, nil
 }
 
-// pigeon helper method, sometimes you gotta do what you gotta do
-func toIfaceSlice(v interface{}) []interface{} {
-	if v == nil {
-		return nil
+func genericParseError(message string) *ParseError {
+	return &ParseError{
+		Position: ast.NoPosition(),
+		Msg:      message,
 	}
-	return v.([]interface{})
 }
 
-// helper method to get individual tokens from their rule index
-func getTokens(first, rest interface{}, idx int) []string {
-	out := []string{first.(string)}
-	restSl := toIfaceSlice(rest)
-	for _, v := range restSl {
-		expr := toIfaceSlice(v)
-		out = append(out, expr[idx].(string))
+// ErrorWith allows using an AST node as the position basis for a parser error
+// message.
+func ErrorWith(node Positioned, message string) *ParseError {
+	return &ParseError{
+		Position: node.Pos(),
+		Msg:      message,
 	}
-	return out
+}
+
+// ErrorAt allows returning a parser error with a manually-defined position.
+// Useful for tweaking position from a node.
+func ErrorAt(pos ast.Pos, message string) *ParseError {
+	return &ParseError{
+		Position: pos,
+		Msg:      message,
+	}
+}
+
+type ParserOpts struct {
+	debug    bool
+	visitors []Visitor
+}
+
+type Option func(*ParserOpts)
+
+// Debug instructs the parser to print detailed parse information
+func Debug() Option {
+	return func(p *ParserOpts) {
+		p.debug = true
+	}
+}
+
+// Visitors adds additional visitors to the parsing pass
+func Visitors(visitors ...Visitor) Option {
+	return func(p *ParserOpts) {
+		p.visitors = append(p.visitors, visitors...)
+	}
 }

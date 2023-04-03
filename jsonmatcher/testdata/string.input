@@ -1,0 +1,16 @@
+T word prefix
+text.likes:"Pizza*"
+T word suffix
+text.likes:"*ood"
+T word in several
+quotes.quote:"programming"
+T word in one
+quotes.quote:"steam"
+T words are case-insensitive
+quotes.quote:"SoFtWaRe"
+T question mark is eactly one character
+text.name:"A??y" AND !(text.name:"A?y" OR text.name:"A???y")
+T stars must be escaped to match literally
+text.multiply:"1\\*1" AND !number.floatstr:"1\\*1"
+T direct unicode works (no word boundary)
+text.likes:"?椒?"
