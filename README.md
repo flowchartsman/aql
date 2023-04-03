@@ -5,7 +5,6 @@ It aims to provide the following features:
 
 * Simple, recognizable syntax
 * Expressive composition of boolean expressions
-* Extensible user-defined operators
 * A generic query front-end for multiple data sources (eventually)
 
 Currently it is used for searching arbitrary JSON data.
@@ -14,9 +13,9 @@ Currently it is used for searching arbitrary JSON data.
 
 ```go
 import (
-	"strings"
+    "log"
 
-	"github.com/flowchartsman/aql/jsonquery"
+	"github.com/flowchartsman/aql/jsonmatcher"
 )
 
 const json = `{
@@ -27,17 +26,18 @@ const json = `{
 }`
 
 func main() {
-	js := strings.NewReader(json)
-	q, err := jsonquery.NewQuerier(`date:><[1970-01-01,1970-01-03]`)
+	m, err := NewMatcher(`name:"andy" AND date:><(1970-01-01,1980-01-01)`)
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("error running query: %v", err)
 	}
-	result, err := q.Match(js)
+
+	result, err := m.Match([]byte(json))
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("error during match: %v", err)
 	}
-	println(result) // true
+	fmt.Println(result)
 }
+// output: true
 ```
 # AQL Syntax
 
@@ -89,7 +89,7 @@ If the targetted field is an array, all values will be tested, and the query wil
 ```
 `outer.inner:"world"`==true
 
-However, intervening arrays will need to use the `*` path wildcard to ensure inspection:
+Intervening arrays will be transparently traversed, provided they contain objects or scalar values (deeply nested arrays are a WIP):
 
 ```json
 {
@@ -98,7 +98,10 @@ However, intervening arrays will need to use the `*` path wildcard to ensure ins
             "inner": "hello"
         },
         {
-            "inner": "world"
+            "inner": [
+                "world"
+            ]
+        }
         },
         {
             "inner": "from AQL"
@@ -106,9 +109,7 @@ However, intervening arrays will need to use the `*` path wildcard to ensure ins
     ]
 }
 ```
-`outer.*.inner:"world"`==true
-
-(this is a limitation of the pathfinding in the underlying `gabs` library, and may be resolved in a future version)
+`outer.inner:"world"`==true
 
 ## Boolean Logic
 
@@ -142,7 +143,6 @@ AQL recognizes several different types of terms:
 |CIDR|`192.168.0.0/16`|a network block| |
 |boolean|`true`<br /><br/>`false`|a boolean literal value| |
 |regex|`/^hello to \d{2} people$/`|a regular expression for advanced string matching|uses [Go regex syntax](https://golang.org/pkg/regexp/syntax/)|
-|Exists|`exists`|a special value to check that a field exists|cannot be combined with other terms in the same clause|
 
 **Note**: Not all terms work with all operators, see the next section for details
 
@@ -161,7 +161,15 @@ This is the basic equality check we've seen so far.
 |float|`field:1.0`|searches for a numeric value of the exact value provided|
 |timestamp|`field:1970-01-01`<br/><br />`field:1970-01-02T15:53:33+00:00`|searches for a string whith represnts this date. AQL attempts to detect a number of different possible time representations to make this check. For details, see [here](https://github.com/araddon/dateparse#extended-example). Note that this check is currently for the exact timestamp specified, and other operations may be more useful for working with timestamps.
 |boolean|`field:true`<br/><br/>`field:false`|searches for a JSON boolean of the exact value provided|
-|exists|`field:exists`|matches if the field exists in the document in any surveyed location. This is a special value and only works with an equality check
+|regex|`field:/attack of the \d+ foot (?:cat\|dog)/`|matches a string where a dog or cat of any height attacks (uses [Go regex syntax](https://golang.org/pkg/regexp/syntax/))|
+|IP/CIDR|`field:192.168.1.0/24`|matches string values that correspond to network addresses. AQL will attempt to extract an IP address or CIDR block from the text and match the provided address against it. If the provided address is an IP address, AQL will check to see if any values match it, or if it finds CIDR blocks, whether they contain it. Correspondingly, if a CIDR block is provided, AQL will match if an extracted IP address is in that CIDR block. If both values are in CIDR notation, AQL will match if they overlap.
+
+### Exists/Null
+
+AQL also supports two special operators, `exists` and `null`.
+
+|exists|`field:exists`|matches if the field exists in the document in any surveyed location. This is actually a unary operation and not a special value, so it cannot be combined with other values in an equality set (not that you'd want to.)
+|null|`field:null`|matches if the field is explicitly null (or if all resolutions of the field in a nested structure are null). It behaves similarly to `exists`, but it is more strict.
 
 ### Equality set
 `field:(value1, value2, ...)`
@@ -174,6 +182,8 @@ Analagous to a SQL IN query, this is basically a shorthand for `field:value1 OR 
 |integer|`field:(1,2)`|
 |float|`field:(1.1, 2.2)`|
 |timestamp|`field:(1970-01-01, 1970-01-02T15:53:33Z)`|
+
+Values in an equality set can be of any type.
 
 
 ### Numeric Comparison
@@ -213,9 +223,19 @@ This operation allows searching on values that are similar to the provided value
 |Supported Types|Examples|Notes|
 |---------------|--------|-----|
 |string|`field:~"wildcar? *"`|wildcard match. `*` is any number of characters, while `?` is any one character|
-|regex|`field:~/attack of the \d+ foot (?:cat\|dog)/`|matches a string where a dog or cat of any height attacks (uses [Go regex syntax](https://golang.org/pkg/regexp/syntax/))|
-|boolean|`field:~true`<br/><br/>`field:~false`|boolean similarity will search for "truthy" things, which are: boolean `true`, string "true", numeric 1, string "1", while boolean false will search for "falsy" things, which are boolean `false`, string "false", numeric 0, and string "0"|
-|CIDR|`field:~192.168.0.0/24`|Attempts to match a string representing an IP address between 192.168.0.0 and 192.168.0.255|
+
+|boolean|`field:~true`<br/><br/>`field:~false`|boolean similarity will search for "truthy"/"falsy" values.
+
+"Falsy" values are:
+
+* boolean `false`
+* an numeric value of 0
+* the empty string (`""`)
+* a string equal to `"false"` (case-insensitive)
+* a string equal to `"0"`
+* an explicit JSON `null`
+
+All other values are truthy, except for an undefined value, which is neither truthy nor falsy, and will match neither.
 
 
 ## Contributing
@@ -227,8 +247,6 @@ Please make sure to update tests as appropriate.
 [MIT](https://choosealicense.com/licenses/mit/)
 
 ## TODO
-* Typing/verifying of types in parser
-* Operator-first definitions
 * Pluggable string-based user-provided types
 * Pluggable user-provided operators
 * Flexible query backend with selectable language features (backend doesn't support clause)
