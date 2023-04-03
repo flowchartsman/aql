@@ -2,12 +2,35 @@ package jsonmatcher
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 )
+
+func ExampleMatcher() {
+	const json = `{
+		"date": "1970-01-02",
+		"number": 2,
+		"name": "Andy",
+		"description": "大懒虫"
+	}`
+
+	m, err := NewMatcher(`name:"andy" AND date:><(1970-01-01,1980-01-01)`)
+	if err != nil {
+		log.Fatalf("error running query: %v", err)
+	}
+
+	result, err := m.Match([]byte(json))
+	if err != nil {
+		log.Fatalf("error during match: %v", err)
+	}
+	fmt.Println(result)
+
+	// Output: true
+}
 
 func TestMatcher(t *testing.T) {
 	jb, err := os.ReadFile(filepath.Join("testdata", "testdata.json"))
@@ -36,7 +59,7 @@ func TestMatcher(t *testing.T) {
 					if strings.TrimSpace(st.query) == "" {
 						t.Fatalf("empty test")
 					}
-					matcher, _, err := NewMatcher(st.query)
+					matcher, err := NewMatcher(st.query)
 					if err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}

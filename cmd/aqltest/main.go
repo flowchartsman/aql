@@ -16,13 +16,13 @@ func main() {
 		log.Fatal("Usage: aql 'EXPR' <json file>")
 	}
 
-	m, messages, perr := jsonmatcher.NewMatcher(os.Args[1])
-	if perr != nil {
-		log.Fatalf("error running query: %s", parser.PrettyErr(os.Args[1], perr))
+	m, err := jsonmatcher.NewMatcher(os.Args[1])
+	if err != nil {
+		log.Fatalf("error running query: %s", parser.PrettyErr(os.Args[1], err))
 	}
 
-	if len(messages) > 0 {
-		for _, m := range parser.PrettyMessages(os.Args[1], messages...) {
+	if len(m.Messages()) > 0 {
+		for _, m := range parser.PrettyMessages(os.Args[1], m.Messages()...) {
 			log.Println(m)
 		}
 	}

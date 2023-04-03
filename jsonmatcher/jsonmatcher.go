@@ -7,23 +7,28 @@ import (
 
 // Matcher performs an AQL query against JSON to see if it matches
 type Matcher struct {
-	root  boolNode
-	ppool fastjson.ParserPool
-	// fieldstats map[string]FieldStats
+	root     boolNode
+	ppool    fastjson.ParserPool
+	messages []*parser.ParserMessage
 }
 
-func NewMatcher(aqlQuery string /*options*/) (*Matcher, []*parser.ParserMessage, error) {
+// NewMatcher creates a new matcher that returns whether a JSON document matches
+// an AQL query
+func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
 	visitor := parser.NewMessageVisitor(warningVisitor)
 	root, err := parser.ParseQuery(aqlQuery, parser.Visitors(visitor))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	builder := newBuilder(true)
+
 	return &Matcher{
-		root: builder.build(root),
-	}, visitor.Messages(), nil
+		root:     builder.build(root),
+		messages: visitor.Messages(),
+	}, nil
 }
 
+// Match returns whether or not the query matches on a JSON document.
 func (m *Matcher) Match(json []byte) (bool, error) {
 	// An unfortunate necessity for now, until something like
 	// https://github.com/valyala/fastjson/pull/68 can land.
@@ -44,6 +49,12 @@ func (m *Matcher) Match(json []byte) (bool, error) {
 // is not re-used during this call.
 func (m *Matcher) MatchParsed(doc *fastjson.Value) (bool, error) {
 	return m.root.result(doc), nil
+}
+
+// Messages will return any hints or warning messages that the matcher may have
+// generated during parsing
+func (m *Matcher) Messages() []*parser.ParserMessage {
+	return m.messages
 }
 
 func (m *Matcher) Stats() *MatchStats {
