@@ -1,14 +1,15 @@
 package jsonmatcher
 
 import (
+	"encoding/json"
+	"errors"
+
 	"github.com/flowchartsman/aql/parser"
-	"github.com/valyala/fastjson"
 )
 
 // Matcher performs an AQL query against JSON to see if it matches
 type Matcher struct {
 	root     boolNode
-	ppool    fastjson.ParserPool
 	messages []*parser.ParserMessage
 }
 
@@ -29,26 +30,11 @@ func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
 }
 
 // Match returns whether or not the query matches on a JSON document.
-func (m *Matcher) Match(json []byte) (bool, error) {
-	// An unfortunate necessity for now, until something like
-	// https://github.com/valyala/fastjson/pull/68 can land.
-	if err := fastjson.ValidateBytes(json); err != nil {
-		return false, err
+func (m *Matcher) Match(data []byte) (bool, error) {
+	if !json.Valid(data) {
+		return false, errors.New("invalid JSON")
 	}
-	parser := m.ppool.Get()
-	defer m.ppool.Put(parser)
-	doc, err := parser.ParseBytes(json)
-	if err != nil {
-		return false, err
-	}
-	return m.root.result(doc), nil
-}
-
-// MatchParsed allows matching on an already-parsed (and presumably validated)
-// *fastjson.Value. It is the caller's responsibility to ensure that the parser
-// is not re-used during this call.
-func (m *Matcher) MatchParsed(doc *fastjson.Value) (bool, error) {
-	return m.root.result(doc), nil
+	return m.root.result(data), nil
 }
 
 // Messages will return any hints or warning messages that the matcher may have

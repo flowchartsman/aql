@@ -1,7 +1,5 @@
 package jsonmatcher
 
-import "github.com/valyala/fastjson"
-
 type statsProvider interface {
 	stats() *MatchStats
 }
@@ -9,7 +7,7 @@ type statsProvider interface {
 type boolNode interface {
 	statsProvider
 	// result() (bool, error)
-	result(*fastjson.Value) bool
+	result([]byte) bool
 }
 
 type andNode struct {
@@ -17,7 +15,7 @@ type andNode struct {
 	nodeStats   *nodeStats
 }
 
-func (a *andNode) result(root *fastjson.Value) bool {
+func (a *andNode) result(root []byte) bool {
 	result := a.left.result(root) && a.right.result(root)
 	if a.nodeStats != nil {
 		a.nodeStats.mark(result)
@@ -34,7 +32,7 @@ type orNode struct {
 	nodeStats   *nodeStats
 }
 
-func (o *orNode) result(root *fastjson.Value) bool {
+func (o *orNode) result(root []byte) bool {
 	result := o.left.result(root) || o.right.result(root)
 	if o.nodeStats != nil {
 		o.nodeStats.mark(result)
@@ -51,7 +49,7 @@ type notNode struct {
 	nodeStats *nodeStats
 }
 
-func (n *notNode) result(root *fastjson.Value) bool {
+func (n *notNode) result(root []byte) bool {
 	result := !n.sub.result(root)
 	if n.nodeStats != nil {
 		n.nodeStats.mark(result)
@@ -97,7 +95,7 @@ type exprNode struct {
 	nodeStats *nodeStats
 }
 
-func (e exprNode) result(root *fastjson.Value) bool {
+func (e exprNode) result(root []byte) bool {
 	matched := false
 	field := getField(e.path, root)
 	if len(field.values) > 0 {
