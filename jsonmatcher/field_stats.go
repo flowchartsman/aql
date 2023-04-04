@@ -2,10 +2,11 @@ package jsonmatcher
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync"
 
-	"github.com/valyala/fastjson"
+	"github.com/buger/jsonparser"
 	"go.uber.org/atomic"
 )
 
@@ -95,24 +96,26 @@ func (n *FieldStats) MarshalJson() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-func (n *FieldStats) mark(foundValues []*fastjson.Value, matchIdx int, inArray bool) {
+var stopIter = errors.New("found maximum number of values")
+
+func (n *FieldStats) mark(foundValues []jsonValue, matchIdx int, inArray bool) {
 	n.TimesSampled.Inc()
 	for _, foundValue := range foundValues {
 		var which int
 		var isObject bool
-		switch foundValue.Type() {
-		case fastjson.TypeString:
+		switch foundValue.dataType {
+		case jsonparser.String:
 			which = str
-		case fastjson.TypeNumber:
+		case jsonparser.Number:
 			which = number
-		case fastjson.TypeFalse, fastjson.TypeTrue:
+		case jsonparser.Boolean:
 			which = boolean
-		case fastjson.TypeArray:
+		case jsonparser.Array:
 			which = array
-		case fastjson.TypeObject:
+		case jsonparser.Object:
 			which = object
 			isObject = true
-		case fastjson.TypeNull:
+		case jsonparser.Null:
 			which = null
 		}
 		if inArray {
@@ -122,23 +125,43 @@ func (n *FieldStats) mark(foundValues []*fastjson.Value, matchIdx int, inArray b
 		// every 1000 times this field type marked, extract an example field
 		if which < boolean && n.TimesSampled.Load()%fieldMarkWindow == 0 {
 			if !isObject {
-				n.TypesEnountered[which].Examples.addExample(foundValue.String())
+				var (
+					sv  string
+					err error
+				)
+				if foundValue.dataType == jsonparser.String {
+					sv, err = jsonparser.ParseString(foundValue.data)
+					if err != nil {
+						sv = "invalid string"
+					}
+					if len(sv) == 0 {
+						sv = "empty string"
+					}
+				} else {
+					// a number, should be able to just use raw bytes
+					sv = string(foundValue.data)
+				}
+				n.TypesEnountered[which].Examples.addExample(sv)
 			} else {
+				// object
 				var sb strings.Builder
 				sb.WriteString("<object with keys: ")
 				numkeys := 0
-				keylist := []string{}
-				obj := foundValue.GetObject()
-				obj.Visit(func(key []byte, _ *fastjson.Value) {
-					if numkeys > fieldMapMaxKeys {
-						return
+				jsonparser.ObjectEach(foundValue.data, func(key []byte, value []byte, dataType jsonparser.ValueType, _ int) error {
+					if numkeys > 0 {
+						sb.WriteString(",")
 					}
-					keylist = append(keylist, `"`+string(key)+`"`)
+					keystr, err := jsonparser.ParseString(key)
+					if err != nil {
+						keystr = "<invalid key>"
+					}
+					sb.WriteString(`"` + keystr + `"`)
+					numkeys++
+					if numkeys > fieldMapMaxKeys {
+						return stopIter
+					}
+					return nil
 				})
-				sb.WriteString(strings.Join(keylist, `,`))
-				if numkeys > fieldMapMaxKeys {
-					sb.WriteString(", ...")
-				}
 				sb.WriteString(">")
 				n.TypesEnountered[which].Examples.addExample(sb.String())
 			}
