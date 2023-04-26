@@ -2,6 +2,7 @@ package jsonmatcher
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/flowchartsman/aql/parser/ast"
 )
@@ -44,10 +45,21 @@ func exprEQ(RVals []ast.Val) []fieldExpr {
 				op:    ast.EQ,
 			})
 		case *ast.TimeVal:
-			matchers = append(matchers, &exprDatetime{
-				values: [2]int64{rval.Value().UnixNano()},
-				op:     ast.EQ,
-			})
+			if rval.DayOnly() {
+				endOfDay := rval.Value().Add(24*time.Hour).UnixNano() - 1
+				matchers = append(matchers, &exprDatetime{
+					values: [2]int64{
+						rval.Value().UnixNano(),
+						endOfDay,
+					},
+					op: ast.BET,
+				})
+			} else {
+				matchers = append(matchers, &exprDatetime{
+					values: [2]int64{rval.Value().UnixNano()},
+					op:     ast.EQ,
+				})
+			}
 		case *ast.NetVal:
 			matchers = append(matchers, &exprNet{
 				value: rval.Value(),

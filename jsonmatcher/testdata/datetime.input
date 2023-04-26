@@ -13,7 +13,7 @@ date.dateTime:<=1980-01-01
 
 T interpreted short date field lt fullDate val
 date.shortDate:<1980-01-01
-T fulldate eq interpreted short datae
+T fulldate eq interpreted short date
 date.shortDate:1970-01-02
 
 T dateTime field lt dateTime val
@@ -29,6 +29,13 @@ T fullDate field between two fulldate vals
 date.fullDate:><(1970-01-01,1970-01-03)
 F fullDate field not between two fulldate vals
 date.fullDate:><(1970-01-03,1970-01-04)
+
+T fullDate matches the entire day of dateTime
+date.dateTime:1970-01-02
+T fullDate matches the entire day of interpreted short date
+date.shortDate:1970-01-02
+T fullDate matches the entire day of interpreted written date
+date.writtenDate:1970-01-01
 
 F non-date string doesn't match anything
 text.name:><(1970-01-02,4000-01-02)

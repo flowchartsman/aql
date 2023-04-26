@@ -413,19 +413,22 @@ func (n *NetVal) Pos() Pos {
 }
 
 type TimeVal struct {
-	sv  string
-	tv  time.Time
-	pos Pos
+	sv      string
+	tv      time.Time
+	dayOnly bool
+	pos     Pos
 }
 
 func NewTimeVal(b []byte, pos Pos) (*TimeVal, error) {
 	sv := string(b)
 	var (
-		tv  time.Time
-		err error
+		tv      time.Time
+		dayOnly bool
+		err     error
 	)
 	if len(sv) == 10 {
 		tv, err = time.Parse(`2006-01-02`, sv)
+		dayOnly = true
 	} else {
 		tv, err = time.Parse(time.RFC3339, sv)
 	}
@@ -441,9 +444,10 @@ func NewTimeVal(b []byte, pos Pos) (*TimeVal, error) {
 	}
 
 	return &TimeVal{
-		sv:  sv,
-		tv:  tv,
-		pos: pos,
+		sv:      sv,
+		tv:      tv,
+		dayOnly: dayOnly,
+		pos:     pos,
 	}, nil
 }
 
@@ -461,6 +465,10 @@ func (t *TimeVal) Type() ValType {
 
 func (t *TimeVal) Pos() Pos {
 	return t.pos
+}
+
+func (t *TimeVal) DayOnly() bool {
+	return t.dayOnly
 }
 
 func FieldString(pathparts []string) string {

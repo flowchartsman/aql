@@ -50,8 +50,8 @@ func warningVisitor(node ast.Node, tape *parser.MessageTape) error {
 					}
 				}
 			case *ast.TimeVal:
-				if n.Op == ast.EQ {
-					tape.WarningAt(rv.Pos(), `exact matches on datetime values currently match the time EXACTLY, consider using [:~] or a numeric comparison`)
+				if n.Op == ast.EQ && !rv.DayOnly() {
+					tape.WarningAt(rv.Pos(), `exact matches on full datetime values match the time EXACTLY, consider using [:] and a short date (YYYY-MM-DD) to match the day or a numeric comparison`)
 				}
 			}
 		}
