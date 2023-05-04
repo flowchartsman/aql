@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/flowchartsman/aql/jsonmatcher"
 	"github.com/flowchartsman/aql/parser"
@@ -16,7 +17,17 @@ func main() {
 		log.Fatal("Usage: aql 'EXPR' <json file>")
 	}
 
-	m, err := jsonmatcher.NewMatcher(os.Args[1])
+	query := os.Args[1]
+
+	if strings.HasSuffix(query, ".aql") {
+		qb, err := os.ReadFile(query)
+		if err != nil {
+			log.Fatal(err)
+		}
+		query = string(qb)
+	}
+
+	m, err := jsonmatcher.NewMatcher(query)
 	if err != nil {
 		log.Fatalf("error running query: %s", parser.PrettyErr(os.Args[1], err))
 	}
