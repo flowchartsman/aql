@@ -214,29 +214,6 @@ This operation attempts to search for a value which falls between the two provid
 |float|`field:><(2.1, 2.2)`|searches for a numeric value less than 2.5 |
 |timestamp|`field:><(1970-01-01, 1970-01-02)`|Attempts to match a timestamp in one of the  [recognized formats](https://github.com/araddon/dateparse#extended-example) that occurs between midnight, January 1, 1970 and midnight, January 2, 1970|
 
-### Similarity
-`field:~value`
-
-This operation allows searching on values that are similar to the provided value.
-
-|Supported Types|Examples|Notes|
-|---------------|--------|-----|
-|string|`field:~"wildcar? *"`|wildcard match. `*` is any number of characters, while `?` is any one character|
-
-|boolean|`field:~true`<br/><br/>`field:~false`|boolean similarity will search for "truthy"/"falsy" values.
-
-"Falsy" values are:
-
-* boolean `false`
-* an numeric value of 0
-* the empty string (`""`)
-* a string equal to `"false"` (case-insensitive)
-* a string equal to `"0"`
-* an explicit JSON `null`
-
-All other values are truthy, except for an undefined value, which is neither truthy nor falsy, and will match neither.
-
-
 ## Contributing
 PRs welcome. Please file issues if your PR addresses a bug.
 
