@@ -20,8 +20,8 @@ func (e *exprEqBool) matches(field *field) bool {
 		switch e.op {
 		case ast.EQ:
 			bv, ok = getBoolVal(v)
-		case ast.SIM:
-			bv, ok = getTruthyVal(v)
+		// case ast.SIM:
+		// 	bv, ok = getTruthyVal(v)
 		default:
 			// backstop
 			panic(fmt.Sprintf("invalid op for boolean comparison: %s", e.op))

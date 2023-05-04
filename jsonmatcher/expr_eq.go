@@ -22,9 +22,7 @@ func exprEQ(RVals []ast.Val) []fieldExpr {
 		switch rval := r.(type) {
 		case *ast.StringVal:
 			str := rval.Value()
-			matchers = append(matchers, &exprRegexp{
-				value: stringSearchRegexp(str),
-			})
+			matchers = append(matchers, getStringMatcher(str))
 		case *ast.RegexpVal:
 			matchers = append(matchers, &exprRegexp{
 				value: rval.Value(),

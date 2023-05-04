@@ -96,7 +96,7 @@ func getTests(filename string) ([]queryTest, error) {
 	lines := strings.Split(string(file), "\n")
 	var nextTest queryTest
 	for lineno, line := range lines {
-		if line == "" {
+		if line == "" || line[0] == '#' {
 			continue
 		}
 		if testMarker.MatchString(line) {

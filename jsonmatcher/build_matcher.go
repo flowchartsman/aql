@@ -111,7 +111,9 @@ func (b *builder) build(node ast.Node) boolNode {
 		case ast.EQ:
 			node.exprs = exprEQ(n.RVals)
 		case ast.SIM:
-			node.exprs = exprSim(n.RVals)
+			node.exprs = exprEQ(n.RVals)
+			// exprSim Deprecated
+			// node.exprs = exprSim(n.RVals)
 		default:
 			// backstop
 			panic(fmt.Sprintf("undefined operation: [%s]", n.Op))

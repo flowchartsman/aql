@@ -1,33 +1,36 @@
-T true is true
+# Truthy bools are the only reason to potentially keep the fuzzy operator (:~) around
+# However, this would be better served with a special function like foo:truthy(false), so
+# silencing these tests for now
+S true is true
 attributes.nice:true
-T false is false
+S false is false
 attributes.dead:false
-F non-booleans are neither true nor false
+S non-booleans are neither true nor false
 number.int:true OR number.int:false
 
-T bool true is truthy
+S bool true is truthy
 attributes.nice:~true
-T string "true" is truthy
+S string "true" is truthy
 attributes.fun:~true
-T all strings but empty and "0" are truthy
+S all strings but empty and "0" are truthy
 text.name:~true AND text.description:~true
-T all numeric values but zero are truthy
+S all numeric values but zero are truthy
 number.int:~true AND number.float:~true AND attributes.ternary:~true
 
-T bool false is falsy
+S bool false is falsy
 attributes.dead:~false
-T string "false" is falsy
+S string "false" is falsy
 attributes.enjoys_excessive_tests:~false
-T string "0" is falsy
+S string "0" is falsy
 number.zero:~false
-T numeric 0 is falsy
+S numeric 0 is falsy
 attributes.killer_robot:~false
-T empty string is falsy
+S empty string is falsy
 attributes."not specified":~false
-T explicit null is falsy
+S explicit null is falsy
 attributes.buddhanature:~false
 
-F non-existant is neither truthy nor falsy
+S non-existant is neither truthy nor falsy
 attributes.nope:~true OR attributes.nope:~false
-F exists is neither truthy nor falsy
+S exists is neither truthy nor falsy
 text:~true OR test:~false

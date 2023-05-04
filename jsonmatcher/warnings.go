@@ -16,6 +16,10 @@ func warningVisitor(node ast.Node, tape *parser.MessageTape) error {
 	case *ast.ExprNode:
 		for _, v := range n.RVals {
 			switch rv := v.(type) {
+			case *ast.StringVal:
+				if n.Op == ast.SIM {
+					tape.WarningAt(n.Pos(), `Similarity comparison is deprecated for string values. Please use the normal comparison operator - field:"<string>"`)
+				}
 			case *ast.RegexpVal:
 				if n.Op == ast.SIM {
 					tape.WarningAt(n.Pos(), "Similarity comparison is no longer necessary for regular expressions and will eventually be removed. Please use the normal comparison operator - field:/<regular expression/")
