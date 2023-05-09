@@ -13,3 +13,4 @@ cmd/aqltest/*.json
 cmd/aqlgraph/query_graph.svg
 **/*.wasm
 **/*.wasm.gz
+cmd/aqltest/*.aql
