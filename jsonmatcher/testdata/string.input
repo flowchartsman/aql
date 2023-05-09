@@ -14,3 +14,5 @@ T stars must be escaped to match literally
 text.multiply:"1\\*1" AND !number.floatstr:"1\\*1"
 T direct unicode works (no word boundary)
 text.likes:"?椒?"
+T multiple words in the middle
+net.observed:"access from"
