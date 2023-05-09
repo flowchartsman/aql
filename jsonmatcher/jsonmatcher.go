@@ -10,6 +10,7 @@ import (
 // Matcher performs an AQL query against JSON to see if it matches
 type Matcher struct {
 	root     boolNode
+	query    string
 	messages []*parser.ParserMessage
 }
 
@@ -25,6 +26,7 @@ func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
 
 	return &Matcher{
 		root:     builder.build(root),
+		query:    aqlQuery,
 		messages: visitor.Messages(),
 	}, nil
 }
@@ -41,6 +43,11 @@ func (m *Matcher) Match(data []byte) (bool, error) {
 // generated during parsing
 func (m *Matcher) Messages() []*parser.ParserMessage {
 	return m.messages
+}
+
+// Query will return the query string the matcher was created with
+func (m *Matcher) Query() string {
+	return m.query
 }
 
 func (m *Matcher) Stats() *MatchStats {
