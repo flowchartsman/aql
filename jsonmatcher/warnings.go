@@ -18,11 +18,11 @@ func warningVisitor(node ast.Node, tape *parser.MessageTape) error {
 			switch rv := v.(type) {
 			case *ast.StringVal:
 				if n.Op == ast.SIM {
-					tape.WarningAt(n.Pos(), `Similarity comparison is deprecated for string values. Please use the normal comparison operator - field:"<string>"`)
+					tape.WarningAt(rv.Pos(), `Similarity comparison is deprecated for string values. Please use the normal comparison operator - field:"<string>"`)
 				}
 			case *ast.RegexpVal:
 				if n.Op == ast.SIM {
-					tape.WarningAt(n.Pos(), "Similarity comparison is no longer necessary for regular expressions and will eventually be removed. Please use the normal comparison operator - field:/<regular expression/")
+					tape.WarningAt(rv.Pos(), "Similarity comparison is no longer necessary for regular expressions. Please use the normal comparison operator - field:/<regular expression/")
 				}
 				reStr := strings.Trim(v.String(), `/`)
 				if strings.HasPrefix(reStr, "(?i)") && !isASCII(v.String()) {
