@@ -42,13 +42,13 @@ func walkr(v Visitor, node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.AndNode:
 		err = walkr(v, n.Left)
-		if err != Skip {
+		if err != nil && err != Skip {
 			return err
 		}
 		return walkr(v, n.Right)
 	case *ast.OrNode:
 		err = walkr(v, n.Left)
-		if err != Skip {
+		if err != nil && err != Skip {
 			return err
 		}
 		return walkr(v, n.Right)
