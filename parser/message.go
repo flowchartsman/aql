@@ -2,9 +2,7 @@ package parser
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/flowchartsman/aql/parser/ast"
 )
@@ -80,63 +78,4 @@ func newMessage(t MessageType, pos ast.Pos, msg string) *ParserMessage {
 		Msg:      msg,
 		Type:     t,
 	}
-}
-
-// PrettyPrintable represents messages that can be pretty-printed
-type PrettyPrintable interface {
-	Pos() ast.Pos
-	Message() string
-}
-
-// PrettyMessages returns string representations of parser messages that are
-// suitable for printing to a terminal, along with a handy caret indicator
-// pointing to the relevant position in the query, if applicable. Because this
-// function only splits up the query once, it should be preferred when
-// pretty-printing multiple messages.
-func PrettyMessages(query string, messages ...*ParserMessage) []string {
-	if len(messages) == 0 {
-		return nil
-	}
-	queryLines := strings.Split(query, "\n")
-	out := make([]string, 0, len(messages))
-	for _, m := range messages {
-		out = append(out, prettyPrint(queryLines, m))
-	}
-	return out
-}
-
-// PrettyMessage is a convenience method for pretty printing a single parser
-// message. Since the query will be split on each call, consider using
-// [PrettyMessages] if you have a larger query
-func PrettyMessage(query string, message *ParserMessage) string {
-	queryLines := strings.Split(query, "\n")
-	return prettyPrint(queryLines, message)
-}
-
-// PrettyErr returns the pretty representation of a parser error message, if
-// it contains location information. Othwrwiese it will just print the error.
-func PrettyErr(query string, err error) string {
-	var pe *ParseError
-	if errors.As(err, &pe) {
-		queryLines := strings.Split(query, "\n")
-		return prettyPrint(queryLines, pe)
-	}
-	return err.Error()
-}
-
-func prettyPrint(queryLines []string, message PrettyPrintable) string {
-	if message.Pos().IsZero() {
-		message.Message()
-	}
-	// TODO: trim lines above a certain threshold here.
-	var sb strings.Builder
-	sb.WriteString(message.Message())
-	sb.WriteString("\n")
-	sb.WriteString(queryLines[message.Pos().Line-1])
-	sb.WriteString("\n")
-	if message.Pos().Col > 0 {
-		sb.WriteString(strings.Repeat(` `, message.Pos().Col-1))
-	}
-	sb.WriteString(strings.Repeat(`^`, message.Pos().Len))
-	return sb.String()
 }

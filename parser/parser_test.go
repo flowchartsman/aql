@@ -311,7 +311,7 @@ func testParseErr(t *testing.T, testName string, query string, wantErr string) {
 		t.Helper()
 		_, err := ParseQuery(query)
 		if err != nil {
-			t.Log(PrettyErr(query, err))
+			t.Logf("query error:\n%s\n%v", query, err)
 			if wantErr == "" {
 				t.Fatalf("\nunexpected error:\n%s", err)
 			}

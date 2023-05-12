@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/flowchartsman/aql/jsonmatcher"
 	"github.com/flowchartsman/aql/parser"
+	"github.com/flowchartsman/aql/parser/fmtmsg"
 )
 
 func main() {
@@ -27,15 +29,14 @@ func main() {
 		query = string(qb)
 	}
 
+	printer := fmtmsg.NewTerminalFormatter(-1).WithQuery(query)
 	m, err := jsonmatcher.NewMatcher(query)
 	if err != nil {
-		log.Fatalf("error running query: %s", parser.PrettyErr(os.Args[1], err))
-	}
-
-	if len(m.Messages()) > 0 {
-		for _, m := range parser.PrettyMessages(os.Args[1], m.Messages()...) {
-			log.Println(m)
+		var parseErr *parser.ParseError
+		if errors.As(err, &parseErr) {
+			log.Fatal(printer.Sprint(parseErr))
 		}
+		log.Fatal(err)
 	}
 
 	input, err := os.ReadFile(os.Args[2])
@@ -43,15 +44,20 @@ func main() {
 		log.Fatalf("could not open file: %v", err)
 	}
 
+	for _, m := range m.Messages() {
+		log.Println(printer.Sprint(m))
+	}
+
 	result, err := m.Match(input)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(result)
-	stats := m.Stats()
-	b, err := json.MarshalIndent(stats, "", "  ")
-	if err != nil {
-		log.Fatalf("error marshalling stats: %s", err)
+	if stats := m.Stats(); stats != nil {
+		statsB, err := json.MarshalIndent(stats, "", "  ")
+		if err != nil {
+			log.Fatalf("error marshalling stats: %s", err)
+		}
+		fmt.Println(string(statsB))
 	}
-	fmt.Println(string(b))
 }
