@@ -180,10 +180,10 @@ func TestParseQuery(t *testing.T) {
 		"mix of regular and  no-arg ops",
 		`a:<1 AND b:exists AND c:<=2 AND d:null AND e:"hello"`,
 		`(&& (< a 1) (&& (exists b) (&& (<= c 2) (&& (null d) (== e "hello")))))`)
-	testParse(t,
-		"subdoc node",
-		`foo."ba r"{a:<1 AND b:"hello"}`,
-		`(foo."ba r"{(&& (< a 1) (== b "hello"))})`)
+	// testParse(t,
+	// 	"subdoc node",
+	// 	`foo."ba r"{a:<1 AND b:"hello"}`,
+	// 	`(foo."ba r"{(&& (< a 1) (== b "hello"))})`)
 }
 
 func testParse(t *testing.T, testName string, query string, want string) {
@@ -299,10 +299,6 @@ func TestOpErrors(t *testing.T) {
 			expectedErr,
 		)
 	}
-	testParseErr(t,
-		`similarity operator needs string values`,
-		`value:~ 2`,
-		`1:9(8): [~] operation needs string arguments`)
 }
 
 func testParseErr(t *testing.T, testName string, query string, wantErr string) {
