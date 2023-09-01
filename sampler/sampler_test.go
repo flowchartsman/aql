@@ -1,4 +1,4 @@
-package keysampler
+package sampler
 
 import (
 	"sort"

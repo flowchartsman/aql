@@ -1,4 +1,4 @@
-package keysampler
+package sampler
 
 import (
 	"bytes"
@@ -26,6 +26,8 @@ type Sampler struct {
 	totalDocs int
 }
 
+// New creates a new sampler that will extract key paths down to maxDepth depth
+// (<0) means no limit.
 func New(maxDepth int) *Sampler {
 	k := &Sampler{
 		maxDepth:  maxDepth,
@@ -35,9 +37,11 @@ func New(maxDepth int) *Sampler {
 	return k
 }
 
-func (k *Sampler) Sample(sample []byte) error {
+func (s *Sampler) Sample(sample []byte) error {
 	var rootObj jsonparser.ValueType
 	sampleLen := len(sample)
+	// prep to get 100 characters or so to print if it looks weird, so that
+	// there's something to examine in the logs
 	if sampleLen > 100 {
 		sampleLen = 100
 	}
@@ -55,20 +59,21 @@ func (k *Sampler) Sample(sample []byte) error {
 	default:
 		return fmt.Errorf("sample is not an object or array: %s", string(sample[:sampleLen]))
 	}
-	// initial sampling state
+	// prep initial sampling state
 	depth := 0
 	path := &bytes.Buffer{} // todo: share
-	err := k.sample(sample, path, depth, rootObj)
+	err := s.sample(sample, path, depth, rootObj)
 	if err != nil {
-		k.keys = nil
+		s.keys = nil
 		return err
 	}
-	k.totalDocs++
+
+	s.totalDocs++
 	return nil
 }
 
-func (k *Sampler) sample(current []byte, path *bytes.Buffer, depth int, valType jsonparser.ValueType) error {
-	if depth > k.maxDepth {
+func (s *Sampler) sample(current []byte, path *bytes.Buffer, depth int, valType jsonparser.ValueType) error {
+	if depth > s.maxDepth {
 		return nil
 	}
 	switch valType {
@@ -83,14 +88,14 @@ func (k *Sampler) sample(current []byte, path *bytes.Buffer, depth int, valType 
 			} else {
 				path.Write(key)
 			}
-			if err := k.sample(value, path, depth+1, dataType); err != nil {
+			if err := s.sample(value, path, depth+1, dataType); err != nil {
 				return err
 			}
 			path.Truncate(pl)
 			return nil
 		})
 	case jsonparser.Array: // parse each array value
-		// aerr represents any error we found deeper in the parse
+		// aerr represents any error we found deeper in the array parse
 		var aerr error
 		_, err := jsonparser.ArrayEach(current, func(value []byte, dataType jsonparser.ValueType, _ int, ierr error) {
 			// ierr represents the error from any previous array element; if
@@ -101,7 +106,7 @@ func (k *Sampler) sample(current []byte, path *bytes.Buffer, depth int, valType 
 			if dataType == jsonparser.Array {
 				return
 			}
-			aerr = k.sample(value, path, depth, dataType)
+			aerr = s.sample(value, path, depth, dataType)
 		})
 		if err == nil {
 			err = aerr
@@ -111,30 +116,38 @@ func (k *Sampler) sample(current []byte, path *bytes.Buffer, depth int, valType 
 		return fmt.Errorf("unkown JSON value type: %v", string(current))
 	default:
 		// TODO Track types found for UI hinting
-		k.keys[path.String()[1:]]++
+		s.keys[path.String()[1:]]++
 	}
 	return nil
 }
 
-func (k *Sampler) Keys() []string {
-	out := make([]string, 0, len(k.keys))
-	for key := range k.keys {
+func (s *Sampler) Keys() []string {
+	out := make([]string, 0, len(s.keys))
+	for key := range s.keys {
 		out = append(out, key)
 	}
 	return out
 }
 
-func (k *Sampler) KeysAtThreshold(thresholdPercent int) []string {
+func (s *Sampler) KeysAtThreshold(thresholdPercent int) []string {
 	out := []string{}
 	pct := float64(thresholdPercent) / 100
-	for key, count := range k.keys {
-		if float64(count)/float64(k.totalDocs) >= pct {
+	for key, count := range s.keys {
+		if float64(count)/float64(s.totalDocs) >= pct {
 			out = append(out, key)
 		}
 	}
 	return out
 }
 
-func (k *Sampler) Scanned() int {
-	return k.totalDocs
+func (s *Sampler) Reset() {
+	// clear(k.keys)
+	for k := range s.keys {
+		delete(s.keys, k)
+	}
+	s.totalDocs = 0
+}
+
+func (s *Sampler) Scanned() int {
+	return s.totalDocs
 }
