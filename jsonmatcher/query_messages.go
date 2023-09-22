@@ -9,7 +9,7 @@ import (
 	"github.com/flowchartsman/aql/parser/ast"
 )
 
-func warningVisitor(node ast.Node, tape *parser.MessageTape) error {
+func messageVisitor(node ast.Node, tape *parser.MessageTape) error {
 	// TODO: this could deal with some untangling, it's getting quite long.
 	// Maybe split up the checks more.
 	switch n := node.(type) {
