@@ -17,7 +17,7 @@ type Matcher struct {
 // NewMatcher creates a new matcher that returns whether a JSON document matches
 // an AQL query
 func NewMatcher(aqlQuery string /*options*/) (*Matcher, error) {
-	visitor := parser.NewMessageVisitor(warningVisitor)
+	visitor := parser.NewMessageVisitor(messageVisitor)
 	root, err := parser.ParseQuery(aqlQuery, parser.Visitors(visitor))
 	if err != nil {
 		return nil, err
