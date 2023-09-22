@@ -23,6 +23,7 @@ func getStringMatcher(str string) fieldExpr {
 	}
 }
 
+// todo: replace runs of spaces or handle spaces specially somehow?
 func stringSearchRegexp(wcString string) *regexp.Regexp {
 	wcString = strings.ToLower(wcString)
 	wcRunes := []rune(wcString)
