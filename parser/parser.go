@@ -1,7 +1,5 @@
 package parser
 
-//go:generate pigeon -o parser-gen.go aql.peg
-
 import (
 	"fmt"
 	"io"

@@ -205,11 +205,16 @@ func TestParsingErrors(t *testing.T) {
 	testParseErr(t,
 		`unterminated string simple`,
 		`name:"foo`,
-		`1:10(9): unterminated string value, did you forget a closing '"'?`)
-	// testParseErr(t,
-	// 	`unterminated string middle`,
-	// 	`foo:"foo AND bar:"bar"`,
-	// 	` `)
+		`1:10(9): unterminated string, check for missing closing ["] or unescaped [\]`,
+	)
+	/*
+		// Not a descriptive parse error.
+		// TODO: address better within the confines of pigeon
+		testParseErr(t,
+			`unterminated string middle`,
+			`foo:"foo AND bar:"bar"`,
+			`1:19(18): no match found, expected: [ \n\t\r] or EOF`)
+	*/
 }
 
 func TestValueErrors(t *testing.T) {
